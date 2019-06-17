@@ -1,0 +1,33 @@
+1. Irrationality of sqrt2 (QArithSternBrocot.sqrt2)
+ Proofs/sqrt2 
+ Done
+
+2. Fundamental Theorem of Algebra 
+ Herman Geuvers et al. (in C-CoRN/fta/FTA)
+ Proofs/FTA
+ Done
+
+10. Euler's Generalization of Fermat's Little Theorem
+ Laurent Théry (in mathcomp/solvable/cyclic.v)
+ Proofs/Euler_exp_totient
+ Done
+
+31. Ramsey's Theorem
+ The Coq development team (Sets/Image) 
+ Proofs/Pigeonhole
+ Done
+
+32. Four Color 
+ Found source but cannot install due to missing dependencies
+ Cannot currently find out what those dependencies are
+
+33. Fermat's Last Theorem
+ Found user proof for n=4 in opam, but cannot install
+
+35. Taylor's Theorem
+ UserContributions/Nijmegen/CoRN
+ Proofs/Taylor
+ Done
+
+36. Brouwer Fixed Point Theorem
+ Does not exist in Coq

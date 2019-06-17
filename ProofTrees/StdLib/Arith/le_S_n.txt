@@ -1,0 +1,1 @@
+(Definition Coq.Init.Peano.le_S_n (Lambda nat (Lambda nat (App Coq.Init.Peano.le_pred (App S gen_var_1) (App S gen_var_2))))) (Definition Coq.Arith.Le.le_S_n Coq.Init.Peano.le_S_n) 
