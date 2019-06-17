@@ -2499,6 +2499,23 @@ outfile
 #+RESULTS:
 [[file:Images/factorial_dag.png]]
 
+**** sqrt2_not_rational_d4
+
+#+BEGIN_SRC python :session :results file
+theorem_name = 'sqrt2_not_rational_d4'
+outfile = 'Images/'+theorem_name'_num_cycles.png'
+#sqrt2_d4_tree = theoremNameToLists('sqrt2_not_rational',depth=4)
+#sqrt2_d4_dag = theoremToDAG(sqrt2_d4_tree)
+#motifs_and_cycles = getNumCycles(sqrt2_d4_dag, check_dag = False, repeat=2000)
+#plotLineGraphs(motifs_and_cycles, outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/factorial_dag.png]]
+
+
+
 **** nat equality
 
 #+BEGIN_SRC python :session :results file
