@@ -695,7 +695,7 @@ def theoremNameToOutfile(theorem_name):
 
 def exportIndivResults(theorem_name, theorem, graph, depth):
     list_outfolder = "./ProofList/Individual/" + theorem_name
-    graph_outfolder = "./Graphs/Individual/" + theorem_name
+    graph_outfolder = "./DependencyGraphs/Individual/" + theorem_name
     if not os.path.exists(list_outfolder):
         os.mkdir(list_outfolder)
     if not os.path.exists(graph_outfolder):
@@ -748,7 +748,7 @@ def libNameToOutfile(library_name):
 
 def exportLibResults(library_name, theorems, graph, depth):
     list_outfolder = "./ProofList/StdLib/" + library_name
-    graph_outfolder = "./Graphs/StdLib/" + library_name
+    graph_outfolder = "./DependencyGraphs/StdLib/" + library_name
     if not os.path.exists(list_outfolder):
         os.mkdir(list_outfolder)
     if not os.path.exists(graph_outfolder):
@@ -1144,9 +1144,9 @@ unsub_dep_dict = {}
 rooted_sub_trees = ['Top']
 while theorem_count < max_num_theorems:
     outfile = 'Images/combined_dep_graphs_'+str(theorem_count)+'.png'
-    sub_dict_loc = 'Graphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'.json'
-    sub_theorems_loc = 'Graphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_theorems.json'
-    unsub_loc = 'Graphs/UnsubSub/'+library_name+'_unsub_'+str(theorem_count)+'.json'
+    sub_dict_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'.json'
+    sub_theorems_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_theorems.json'
+    unsub_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_unsub_'+str(theorem_count)+'.json'
     if os.path.exists(sub_theorems_loc) and os.path.exists(unsub_loc) and os.path.exists(sub_dict_loc):
         rooted_sub_trees = json.load(open(sub_theorems_loc))
         unsub_dep_dict = {k:set(v) for k,v in json.load(open(unsub_loc)).items()}
@@ -1164,7 +1164,7 @@ while theorem_count < max_num_theorems:
         print(sub_dep_dict)
         with open(sub_dict_loc,'w') as f:
             f.write(json.dumps({k:list(v) for k,v in sub_dep_dict.items()}))
-        with open('Graphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_contents.json','w') as f:
+        with open('DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_contents.json','w') as f:
             f.write(json.dumps({k:list(v) for k,v in sub_dep_contents.items()}))
         with open(unsub_loc,'w') as f:
             f.write(json.dumps({k:list(v) for k,v in unsub_dep_dict.items()}))
@@ -1184,7 +1184,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 
 library_name = "Arith"
-lib_location = "./Graphs/UnsubSub"
+lib_location = "./DependencyGraphs/UnsubSub"
 outfile = "Images/comparison_sizes.png"
 
 #num_theorems = int(len(list(filter(lambda x: 'theorems' not in x and 'contents' not in x,
@@ -1194,8 +1194,8 @@ outfile = "Images/comparison_sizes.png"
 #unsub_num_nodes = []
 #sub_num_nodes = []
 #for i in range(num_theorems):
-#    unsub_loc = 'Graphs/UnsubSub/'+library_name+'_unsub_'+str(i)+'.json'
-#    sub_loc = 'Graphs/UnsubSub/'+library_name+'_sub_'+str(i)+i.json'
+#    unsub_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_unsub_'+str(i)+'.json'
+#    sub_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(i)+i.json'
 #    with open(unsub_loc,'r') as f:
 #        unsub_graph = nx.DiGraph({k:set(v) for k,v in json.load(f).items()})
 #    with open(sub_loc,'r') as f:
@@ -1647,7 +1647,7 @@ def genComparableGraphs(theorem_dag, num_graphs, test=False):
 
 
 def exportReplicas(theorem_dag, theorem_name, num_replicas):
-    outfolder = './Graphs/Individual/'+theorem_name+'/'
+    outfolder = './DependencyGraphs/Individual/'+theorem_name+'/'
     if not os.path.exists(outfolder):
         os.mkdir(outfolder)
         nx.write_adjlist(nx.DiGraph(theorem_dag), outfolder+'dag_adjlist.txt')
@@ -1706,7 +1706,7 @@ def testDAG(g):
     return nx.read_adjlist('./temp.txt', create_using=nx.DiGraph())
 
 def importReplicas(theorem_name):
-    in_folder = './Graphs/Individual/'+theorem_name+'/'
+    in_folder = './DependencyGraphs/Individual/'+theorem_name+'/'
     orig = []
     replicas = []
     for f in os.listdir(in_folder):
@@ -1722,7 +1722,7 @@ def nxToDict(graph):
     return {k:set(v) for k,v in nx.to_dict_of_lists(graph).items()}
 
 def importReplicasToDict(theorem_name):
-    in_folder = './Graphs/Individual/'+theorem_name+'/'
+    in_folder = './DependencyGraphs/Individual/'+theorem_name+'/'
     orig = []
     replicas = []
     for f in os.listdir(in_folder):
@@ -2602,3 +2602,6 @@ plotDependencyGraph(nx.DiGraph(dag), "Images/" + library_name + "_dag.png", labe
 ** Find compressions in propositional logic
 
 TODO
+
+TODO -- remove orig attempt at sub graph to simplify the directory structure
+ remove Graph directory, instead just use ProofDAGs
