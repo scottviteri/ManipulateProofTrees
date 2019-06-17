@@ -1,0 +1,1 @@
+{"Coq.Arith.Gt.gt_n_S": ["Coq.Arith.PeanoNat.Nat.succ_lt_mono", "Coq.Init.Peano.lt"], "Coq.Arith.PeanoNat.Nat.succ_lt_mono": [], "Coq.Init.Peano.lt": []}
