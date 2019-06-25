@@ -11,3 +11,5 @@
   Want tree manip utilities, plot num nodes at depth
 
 * TODO Create DAG for library
+
+* TODO Find compressions in propositional logic

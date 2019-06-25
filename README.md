@@ -1,27 +1,46 @@
 # ManipulateProofTrees
 
-./ProofSourceFiles
+This package is a meant to help analyze the structural properties of proof trees exported by the Coq theorem prover. To run examples, open the org files and execute the python scripts inside.
 
-A collection of sample Coq proofs. Tested with coq-8.8.
+These will automatically call the executable scripts in this package, but first you need to specify two locations on your file system.
 
-./ProofTrees
+First, in ./ProofSourceFiles/ExportProof.v, change the directory to the location of https://github.com/scottviteri/CoqAST on your local system (clone if you do not have it).
+Second, change the BASE enviroment variable in ./lib_to_trees.sh to the location of your coq/theories.
+If you do not have this, clone from https://github.com/coq/coq.git.
+
+Tested with coq-8.8.
+
+## ./ProofSourceFiles
+
+A collection of sample Coq proofs.
+
+## ./ProofTrees
 
 Exported collection of reified proof trees from ./ProofSourceFiles.
 Export is handled by ./coq_proof_to_trees.sh, which depends on my local version of the git repo uwplse/CoqAST . I have not yet made this Coq plugin available on github.
 
-./Images
+## ./Images
 
 The saved image outputs of computation in ManipPfTrees.org
 
-./Graphs
+## ./Graphs
 
 The saved graph outputs of computation in ManipPfTrees.org
 
-./ManipPfTrees.org
+## ./ManipPfTrees.org
 
-The main file of this repository. Run all code and examples via emacs org mode.
+Compress and analyze proof objects as a deduplified directed acyclic graph.
 
-./clean.sh
+## ./GenerateDependencyGraphs.org
+
+Also generates a DAG from proof objects, but uses an intermediate tree representation where lemmas are substituted into main theorems. Less computationally efficient, but more conceptually clear.
+
+Also can generate graphs of what theorems reference what other theorems in the Coq standard library.
+
+## ./utils.py
+
+Utilities used by both ManipPfTrees.org and ./GenerateDependencyGraph.org
+
+## ./clean.sh
 
 Wipe all saved results from ManipPfTrees.org.
-Not recommended until my Coq plugin fork is uploaded.
