@@ -1,1 +1,3 @@
 flycheck_*
+Images/*
+__pycache__/
