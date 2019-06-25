@@ -7,6 +7,7 @@
    Make two separate files
   Then can change names within ManipPfTrees.org to be more systematic
 
-* TODO Factor out common functionality  between ManipPfTrees.org and GenerateDependencyGraphs.org
+* DONE Factor out common functionality between ManipPfTrees.org and GenerateDependencyGraphs.org
+  Want tree manip utilities, plot num nodes at depth
 
 * TODO Create DAG for library
