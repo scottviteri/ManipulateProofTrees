@@ -111,21 +111,6 @@ def printTree(tree, max_depth=None):
 
 #+BEGIN_SRC python :session :results output silent
 
-  def replaceFlatList2(lst_of_lsts, search_val, replace_val):
-      l = []
-      for x in lst_of_lsts:
-          if search_val == x:
-              l.append(replace_val)
-          else:
-              if isinstance(x,list):
-                  if isFlat(x):
-                      l.append(x)
-                  else:
-                      l.append(replaceFlatList2(x, search_val, replace_val))
-              else:
-                  l.append(x)
-      return l
-
   def replaceFlatList(lst_of_lsts, match, replacement):
       any_replacements = False
       if isinstance(lst_of_lsts, list):
@@ -136,16 +121,6 @@ def printTree(tree, max_depth=None):
               else:
                   any_replacements |= replaceFlatList(lst, match, replacement)
       return any_replacements
-
-  def subNats2(lst_of_lsts):
-      l = replaceFlatList(lst_of_lsts, ['App','S','O'], '1')
-      last_l = None
-      n = 1
-      while last_l != l:
-         last_l = l
-         l = replaceFlatList(l, ['App','S',str(n)], str(n+1))
-         n += 1
-      return l
 
   def subNats(lst_of_lsts):
       l = copy.deepcopy(lst_of_lsts)
@@ -347,6 +322,7 @@ assert(countNodesAtDepths(['a', 'b', ['c','d','e'], ['c','d','e']]) == [1,3,4])
 
 #+END_SRC
 
+
 ** Plot num nodes at particular tree depths
 
 *** Plot depth utils
@@ -399,7 +375,6 @@ def plotNodesVExtractionDepth(theorem_name, max_depth, figsize = (6,6)):
 
 
  #+END_SRC
-
 
 
 *** ev_4
@@ -585,678 +560,8 @@ The two subtrees just happen to be the same size for ev_4 at extraction depth 2.
 
 Massive outliers are inherent.
 
-** Create dependency graph of theorems
-*** Graph plotting utils
-**** Dependency graph for a single root theorem
 
-Goal: given a collection of theorems, create the list of theorems that they reference.
- Then use these theorems and lists to generate a directed graph.
-
-How to deal with extraction depth?
- Use only extraction depth 1.
- This way we only generate the graph of "local" dependencies
-
-How to start?
- Use ev_4 and ev_8. There should be a dependencies from ev_8 to ev_4.
- Then move on to standard library.
-
-#+BEGIN_SRC python :session :results output silent
-
-def theoremToDependencyDict(theorem):
-    assert(theorem[0] == 'Top')
-    theorem_to_dependencies = {}
-    top, theorem_trees = theorem[0], theorem[1:]
-    lemma_candidates = list(map(lambda x: x[1], theorem_trees))
-    old_frontier_theorem_indices = [0]
-    while old_frontier_theorem_indices:
-        new_frontier_theorem_indices = []
-        for theorem_i in old_frontier_theorem_indices:
-            theorem_name = lemma_candidates[theorem_i]
-            dependencies = allAtLeaves(lemma_candidates[max(old_frontier_theorem_indices)+1:],
-                                       theorem_trees[theorem_i])
-            theorem_to_dependencies[theorem_name] = dependencies
-            new_frontier_theorem_indices.extend(
-                list(map(lambda x: lemma_candidates.index(x), dependencies)))
-        old_frontier_theorem_indices = new_frontier_theorem_indices.copy()
-    #print(theorem_to_dependencies)
-    return {k:set(v) for k,v in theorem_to_dependencies.items()}
-
-def theoremToDependencyGraph(theorem):
-    return nx.DiGraph(theoremToDependencyDict(theorem))
-
-assert(theoremToDependencyDict(
-           ['Top', ['Def','a','b'], ['Def','b',['c','d']]])
-      == {'a':{'b'}, 'b':set()})
-
-assert(theoremToDependencyDict(
-            ['Top', ['Def','a','b'], ['Def','b',['App','c','d']], ['Def','c','e'], ['Def','d','e']]
-       )
-       == {'a':{'b'},'b':{'c','d'},'c':set(),'d':set()})
-
-#+END_SRC
-
-#+RESULTS:
-
-**** Dependency graph for a list of theorems
-
-#+BEGIN_SRC python :session :results output silent
-
-def mergeDicts(d1,d2):
-    merged_dict = {}
-    k1, k2 = set(d1.keys()), set(d2.keys())
-    for k in k1.union(k2):
-        if k in k1 and k in k2:
-            merged_dict[k] = d1[k].union(d2[k])
-        elif k in k1:
-            merged_dict[k] = d1[k]
-        elif k in k2:
-            merged_dict[k] = d2[k]
-    return merged_dict
-
-def theoremListToDependencyDict(theorem_list):
-    dep_dicts = list(map(lambda theorem: theoremToDependencyDict(theorem), theorem_list))
-    return functools.reduce(mergeDicts, dep_dicts, {})
-
-def theoremListToDependencyGraph(theorem_list):
-    return nx.DiGraph(theoremListToDependencyDict(theorem_list))
-
-d1 = {'a':{'b'}, 'b':{}}
-d2 = {'a':{'b'},'b':{'c','d'},'c':set(),'d':set()}
-assert(mergeDicts(d1,{}) == d1)
-assert(mergeDicts({},d1) == d1)
-
-theorem_list =  \
-    [
-        ['Top', ['Def','a','b'], ['Def','b',['c','d']]],
-        ['Top',
-                ['Def','a','b'], ['Def','b',['App','c','d']], ['Def','c','e'], ['Def','d','e']
-        ]
-    ]
-
-assert(theoremListToDependencyDict(theorem_list) == d2)
-
-#+END_SRC
-
-**** Plot/Export graph for non-library theorems
-
-#+BEGIN_SRC python :session :results output silent
-
-def plotDependencyGraph(graph, outfile, label=False, figsize=(4,4)):
-    assert(graph.order() != 0)
-    plt.figure(figsize=figsize)
-    nx.spring_layout(graph, k=5/math.sqrt(graph.order()))
-    nx.draw(graph, with_labels=label, node_size = 50)
-    l,r = plt.xlim()
-    plt.xlim(l-.2,r+.2)
-    plt.savefig(outfile)
-
-def theoremNameToOutfile(theorem_name):
-    return 'Images/' + theorem_name + '_dependencies.png'
-
-def exportIndivResults(theorem_name, theorem, graph, depth):
-    list_outfolder = "./ProofList/Individual/" + theorem_name
-    graph_outfolder = "./DependencyGraphs/Individual/" + theorem_name
-    if not os.path.exists(list_outfolder):
-        os.mkdir(list_outfolder)
-    if not os.path.exists(graph_outfolder):
-        os.mkdir(graph_outfolder)
-    with open(list_outfolder + "/d"+str(depth)+".txt",'w') as f:
-        f.write(json.dumps(theorem))
-    nx.write_adjlist(graph, graph_outfolder + "/d"+str(depth)+".txt")
-
-def plotDepGraphFromTheoremName(theorem_name, depth=2, label=False, figsize=(4,4), export=False):
-    outfile = theoremNameToOutfile(theorem_name)
-    if not os.path.exists(outfile):
-        theorem = theoremNameToLists(theorem_name, depth=depth)
-        graph = theoremToDependencyGraph(theorem)
-        if export:
-            exportIndivResults(theorem_name, theorem, graph, depth)
-        plotDependencyGraph(graph, outfile, label=label, figsize=figsize)
-
-
-#+END_SRC
-
-**** Plot/Export graph for library theorems
-
-#+BEGIN_SRC python :session :results output silent
-
-def libTheoremNameToLists(theorem_name, library_name, debug=False):
-    theorem_location = './ProofTrees/StdLib/'+library_name
-    with open(theorem_location + '/'+theorem_name+'.txt', 'r') as f:
-        paren_string = f.read()
-    if paren_string:
-        return parenStringToLists('(Top ' + paren_string.strip() + ')', debug=debug)
-    else:
-        return []
-
-def nameToStdLibTheorems(library_name, debug=False, limit=None):
-    lib_location = "./ProofTrees/StdLib/" + library_name
-    if not os.path.exists(lib_location):
-        subprocess.run(["./lib_to_trees.sh", library_name])
-    theorem_names = list(map(lambda x: x[:-4], os.listdir(lib_location)))
-    if limit:
-        theorem_names = theorem_names[:limit]
-    theorems = {}
-    for theorem_name in theorem_names:
-        unsub_theorem_def = libTheoremNameToLists(theorem_name, library_name, debug=debug)
-        if unsub_theorem_def != []:
-            theorems[theorem_name] = unsub_theorem_def
-    return theorems
-
-def libNameToOutfile(library_name):
-    return 'Images/' + library_name + '_library_dependencies.png'
-
-def exportLibResults(library_name, theorems, graph, depth):
-    list_outfolder = "./ProofList/StdLib/" + library_name
-    graph_outfolder = "./DependencyGraphs/StdLib/" + library_name
-    if not os.path.exists(list_outfolder):
-        os.mkdir(list_outfolder)
-    if not os.path.exists(graph_outfolder):
-        os.mkdir(graph_outfolder)
-    for theorem_name, theorem_def in theorems.items():
-        with open(list_outfolder + '/' + theorem_name + '.txt','w') as f:
-            f.write(json.dumps(theorem_def))
-    nx.write_adjlist(graph, graph_outfolder + '/' + library_name + '.txt')
-
-
-def plotDepGraphFromLibraryName(library_name, depth=2, label=False, figsize = (8,6), export=False, debug=False):
-    assert(library_name in os.listdir('/home/scottviteri/LocalSoftware/coq/theories'))
-    outfile = libNameToOutfile(library_name)
-    if not os.path.exists(outfile):
-        theorems = nameToStdLibTheorems(library_name, debug=debug)
-        graph = theoremListToDependencyGraph(theorems.values())
-        if export:
-            exportLibResults(library_name, theorems, graph, depth)
-        plotDependencyGraph(graph, outfile, label=label, figsize=figsize)
-
-#+END_SRC
-
-#+RESULTS:
-
-*** Plot dependency graphs for non-library theorems
-**** ev_8
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'ev_8'
-plotDepGraphFromTheoremName(theorem_name, label=True)
-theoremNameToOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_dependencies.png]]
-
-**** sqrt2_not_rational
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'sqrt2_not_rational'
-plotDepGraphFromTheoremName(theorem_name, figsize = (8,6), label=True)
-theoremNameToOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/sqrt2_not_rational_dependencies.png]]
-
-**** birthday_paradox
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'birthday_paradox'
-plotDepGraphFromTheoremName(theorem_name, figsize = (8,6),label=True)
-theoremNameToOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/birthday_paradox_dependencies.png]]
-
-
-Hypothesis about what is going on here:
- Library theorems have many more direct dependencies than the average Coq proof
-
-**** bertrand_ballot
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'bertrand_ballot'
-plotDepGraphFromTheoremName(theorem_name, figsize = (8,6), label=True)
-theoremNameToOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/bertrand_ballot_dependencies.png]]
-
-*** Plot dependency graphs for libraries
-**** Reals
-
-#+BEGIN_SRC python :session :results file
-library_name = "Reals"
-plotDepGraphFromLibraryName(library_name, label=False)
-libNameToOutfile(library_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/Reals_library_dependencies.png]]
-
-**** Arith
-
-#+BEGIN_SRC python :session :results file
-library_name = "Arith"
-plotDepGraphFromLibraryName(library_name, label=False)
-libNameToOutfile(library_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/Arith_library_dependencies.png]]
-
-**** ZArith
-
-#+BEGIN_SRC python :session :results file
-library_name = "ZArith"
-plotDepGraphFromLibraryName(library_name, label=False)
-libNameToOutfile(library_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ZArith_library_dependencies.png]]
-
-
-Convert non-unique, ordered tree to unique, unordered dag
-
-#+BEGIN_SRC python :session :results output silent
-
-def countMatches(subtree, tree): #could make efficient by only doing to 2
-    if subtree == tree:
-        return 1
-    if not isinstance(tree,list):
-        return 0
-    count = 0
-    for x in tree[1:]:
-        if x == subtree:
-            count += 1
-        else:
-            count += countMatches(subtree, x)
-    return count
-
-assert(countMatches(3, ['a','b',[1,3,4]]) == 1)
-
-ab_list = ['Top', ['Def',['a','b'],['a','b']], ['Def',['a','b']]]
-assert(countMatches(['a','b'], ab_list) == 3)
-
-def locateMatches(subtree, tree):
-    """ Get locations of matches, as index list
-    Base: locateMatches(['a','b'], ['Def',['a','b'],['a','b']]) -> [[1],[2]]
-    Ind: locateMatches(['a','b'], ['Top', [1,2], [1]]) -> [[1,1], [1,2], [2,1]]
-    """
-    assert(subtree != tree)
-    #assert(isinstance(tree,list))
-    locations = []
-    for i in range(1,len(tree)):
-        x = tree[i]
-        if x == subtree:
-            locations.append([i])
-        else:
-            if isinstance(x, list):
-                locations.extend([[i] + y for y in locateMatches(subtree, x)])
-    return locations
-
-assert(locateMatches(3, ['a','b',[1,3,4]]) == [[2,1]])
-assert(locateMatches(['a','b'], ab_list) == [[1, 1], [1, 2], [2, 1]])
-assert(locateMatches('2',['Def','d2'])==[])
-assert(locateMatches('2', ['Top', ['Def', 'd1', ['App', '2', '3']], ['Def', 'd2']])
-        == [[1,2,1]])
-
-#+END_SRC python :session :results output silent
-
-#+BEGIN_SRC python :session :results output silent
-
-def removeSubtreeEffect(subtree, tree):
-    while 1:
-        for i in range(1,len(tree)):
-            next_tree = tree[i]
-            if subtree == next_tree:
-                del tree[i]
-            else:
-                removeSubtree(subtree, next_tree)
-        return
-
-def removeSubtree(subtree, tree):
-    if not isinstance(tree, list):
-        return tree
-    h,t = tree[0], tree[1:]
-    l = [h]
-    for x in t:
-        if subtree == x:
-            continue
-        else:
-            l.append(removeSubtree(subtree, x))
-    return l
-
-assert(removeSubtree(['a','b'], ab_list) == ['Top', ['Def'], ['Def']])
-
-def getLeaves(tree):
-    leaves = []
-    for x in tree[1:]:
-        if not isinstance(x,list):
-            leaves.append(x)
-        else:
-            leaves.extend(getLeaves(x))
-    return leaves
-
-assert(getLeaves(ev_4_tree) ==
-       ['ev_4.ev_4', 'ev_SS', '2', 'ev_4.ev_2', 'ev_4.ev_2', 'ev_SS', 'O', 'ev_0']
-)
-
-
-def getTheoremLeaves(tree):
-    top, defs = tree[0], tree[1:]
-    all_leaves = map(getLeaves, [x[2] for x in defs if len(x) >= 3])
-    return functools.reduce(lambda x,y: x+y, all_leaves, [])
-
-assert(getTheoremLeaves(ev_4_tree) ==
-    ['ev_SS', '2', 'ev_4.ev_2', 'ev_SS', 'O', 'ev_0']
-)
-
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-
-def compressTrees(trees, new_theorem_name='th0'):
-    frontier = [trees]
-    index_list = []
-    all_matches = []
-    while frontier:
-        index_count = 0
-        current_node = frontier.pop(0)
-        if isinstance(current_node, list):
-            name = current_node[0]
-            for i in range(1,len(current_node)):
-                match_tree = current_node[i]
-                if isinstance(match_tree, list) :
-                    num_matches = countMatches(match_tree, trees)
-                    if num_matches >= 2:
-                        all_matches.append((match_tree, num_matches*countNodes(match_tree)))
-            frontier.extend(current_node[1:])
-            index_list.append(index_count)
-
-    if all_matches:
-        match_tree = max(all_matches, key=lambda x:x[1])[0]
-        match_locations = locateMatches(match_tree, trees)
-        match_theorem_names = [trees[loc[0]][1] for loc in match_locations]
-        compressed_tree = replaceVal(trees, match_tree, new_theorem_name)
-        compressed_tree.append(['Definition', new_theorem_name, match_tree])
-        #compressed_tree = removeSubtree(match_tree, trees)
-        return match_tree, match_theorem_names, compressed_tree
-
-    #print('all_matches', all_matches)
-    return (None, None, trees)
-
-
-def labelLeaves(trees):
-    # extract leaves
-    leaves_to_theorems = {}
-    leaves = set(getTheoremLeaves(trees))
-    for leaf in leaves:
-        match_locations = locateMatches(leaf, trees)
-        match_theorem_names = [trees[loc[0]][1] for loc in match_locations]
-        leaves_to_theorems[leaf] = match_theorem_names
-    return leaves_to_theorems
-
-
-def substTreesToDepGraph(trees):
-    depends_on = {k[1]:set() for k in trees[1:]}
-    contents = {}
-    match_tree = True
-    match_count = 0
-    while match_tree is not None: #repeat until no matches
-        new_theorem_name = 'th' + str(match_count)
-        (match_tree, match_names, trees) = compressTrees(trees, new_theorem_name)
-        if match_tree:
-            contents[new_theorem_name] = match_tree
-            for match_name in match_names:
-                depends_on[match_name].add(new_theorem_name)
-            #trees.append(['Definition',new_theorem_name, match_tree])
-            depends_on[new_theorem_name] = set()
-        match_count += 1
-    #if not contents:
-    #    contents = {k[1]:k[2] for k in trees[1:]}
-    contents = {k[1]:k[2] for k in trees[1:]}
-    return depends_on, contents
-
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-
-def plotDependencyGraphs(g1, g2, outfile, label=False, figsize=(4,4)):
-    if not os.path.exists(outfile):
-        fig, axs = plt.subplots(1,2,figsize=figsize)
-        nx.spring_layout(g1, k=5/math.sqrt(g1.order()))
-        nx.draw(g1, ax=axs[0], with_labels=label, node_size = 50)
-        nx.spring_layout(g2, k=5/math.sqrt(g2.order()))
-        nx.draw(g2, ax=axs[1], with_labels=label, node_size = 50)
-        range1,range2 = axs[0].get_xlim(), axs[1].get_xlim()
-        axs[0].set_xlim(range1[0]-0.2, range1[1]+0.2)
-        axs[1].set_xlim(range2[0]-0.2, range2[1]+0.2)
-        plt.savefig(outfile)
-
-def plotDependencyGraphList(g_list, outfile, label=False):
-    figsize = (6,3*len(g_list))
-    fig, axs = plt.subplots(len(g_list),1,figsize=figsize)
-    for i in range(len(g_list)):
-        g, ax = g_list[i], axs[i]
-        nx.spring_layout(g, k=5/math.sqrt(g.order()))
-        nx.draw(g, ax=ax, with_labels=label, node_size = 50)
-        range1 = ax.get_xlim()
-        ax.set_xlim(range1[0]-0.2, range1[1]+0.2)
-    plt.savefig(outfile)
-
-def wrap(y):
-    return {k:[v] if not isinstance(v,list) else v for k,v in y.items()}
-
-#+END_SRC
-
-*** Tree to DAG util examples
-
-#+BEGIN_SRC python :session :results output silent
-
-t1 = ['Top',['Def','d1',['App','2','2']],['Def','d2',['App','2','2']]]
-assert(substTreesToDepGraph(t1) ==
-    ({'d1': {'th0'}, 'd2': {'th0'}, 'th0': set()},
-     {'d1': 'th0', 'd2': 'th0', 'th0': ['App', '2', '2']}))
-
-t2 = ['Top',['Def','d1',['App','2','2']],['Def','d2','2']]
-assert(substTreesToDepGraph(t2) ==
-        ({'d1': set(), 'd2': set()}, {'d1': ['App', '2', '2'], 'd2': '2'}))
-
-t3 = ['Top',['Def','d1',['App','2','3',['App','2','2']]],['Def','d2',['App','2','2']]]
-assert(substTreesToDepGraph(t3) ==
-        ({'d1': {'th0'}, 'd2': {'th0'}, 'th0': set()},
-         {'d1': ['App', '2', '3', 'th0'], 'd2': 'th0', 'th0': ['App', '2', '2']}))
-
-t4 = ['Top',
-        ['Def', 'd1', ['App', ['App', '2', '2'], ['App', '2', '2']]],
-        ['Def', 'd2', ['App', ['App', '2', '2'], ['App', '2', '2']]]]
-assert(substTreesToDepGraph(t4) ==
-        ({'d1': {'th0'}, 'd2': {'th0'}, 'th0': {'th1'}, 'th1': set()},
-         {'d1': 'th0', 'd2': 'th0', 'th0': ['App', 'th1', 'th1'], 'th1': ['App', '2', '2']}))
-
-
-#+END_SRC
-
-*** Tree to DAG for indiv theorems
-
-If there are no secondary
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_4_gen_dep_graph.png'
-x,y = substTreesToDepGraph(['Top',replaceDefinitions(ev_4_tree)])
-plotDependencyGraph(nx.DiGraph(x), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_4_gen_dep_graph.png]]
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_8_alt_gen_dep_graph.png'
-x,y = substTreesToDepGraph(['Top', replaceDefinitions(ev_8_alt_tree)])
-plotDependencyGraph(nx.DiGraph(x),
-                      outfile, label=True, figsize=(4,4))
-
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_alt_gen_dep_graph.png]]
-
-*** Tree to DAG for library theorems
-
-#+BEGIN_SRC python :session :results output silent
-def nameToStdLibTheoremPairs(library_name, debug=False):
-    lib_location = "./ProofTrees/StdLib/" + library_name
-    if not os.path.exists(lib_location):
-        subprocess.run(["./lib_to_trees.sh", library_name])
-    theorem_names = list(map(lambda x: x[:-4], os.listdir(lib_location)))
-    count = 0
-    should_compute = yield
-    for theorem_name in theorem_names:
-        #print("theorem_name:", theorem_name)
-        #print("should_compute:", should_compute)
-        if should_compute:
-            unsub_theorem_def = libTheoremNameToLists(theorem_name, library_name, debug=debug)
-            if unsub_theorem_def != []:
-                sub_theorem_def = replaceDefinitions(unsub_theorem_def)
-                count += 1
-                should_compute = yield((unsub_theorem_def, sub_theorem_def))
-        else:
-            should_compute = yield
-
-
-#+END_SRC
-
-
-#+BEGIN_SRC python :session :results output silent
-
-library_name = 'Arith'
-max_num_theorems = 3
-theorem_generator = nameToStdLibTheoremPairs(library_name)
-next(theorem_generator)
-plot = True
-
-theorem_count = 0
-unsub_dep_dict = {}
-rooted_sub_trees = ['Top']
-while theorem_count < max_num_theorems:
-    outfile = 'Images/combined_dep_graphs_'+str(theorem_count)+'.png'
-    sub_dict_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'.json'
-    sub_theorems_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_theorems.json'
-    unsub_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_unsub_'+str(theorem_count)+'.json'
-    if os.path.exists(sub_theorems_loc) and os.path.exists(unsub_loc) and os.path.exists(sub_dict_loc):
-        rooted_sub_trees = json.load(open(sub_theorems_loc))
-        unsub_dep_dict = {k:set(v) for k,v in json.load(open(unsub_loc)).items()}
-        next(theorem_generator)
-    else:
-        unsub, sub = theorem_generator.send(True) #add a theorem to the pool
-        # add new unsub dependency dict to the previous
-        unsub_dep_dict = mergeDicts(unsub_dep_dict, theoremToDependencyDict(unsub))
-        # accumuluate sub tree output of theorem generator
-        rooted_sub_trees.append(sub)
-        with open(sub_theorems_loc,'w') as f:
-           f.write(json.dumps(rooted_sub_trees))
-        # create subst tree dependency dict, save
-        sub_dep_dict, sub_dep_contents = substTreesToDepGraph(rooted_sub_trees)
-        print(sub_dep_dict)
-        with open(sub_dict_loc,'w') as f:
-            f.write(json.dumps({k:list(v) for k,v in sub_dep_dict.items()}))
-        with open('DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_contents.json','w') as f:
-            f.write(json.dumps({k:list(v) for k,v in sub_dep_contents.items()}))
-        with open(unsub_loc,'w') as f:
-            f.write(json.dumps({k:list(v) for k,v in unsub_dep_dict.items()}))
-        # plot results
-        sub_dep_dict = substTreesToDepGraph(rooted_sub_trees)[0]
-        if plot:
-            plotDependencyGraphs(nx.DiGraph(unsub_dep_dict),
-                                 nx.DiGraph(sub_dep_dict), outfile, figsize=(8,6))
-    theorem_count += 1
-
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/combined_dep_graphs_2.png]]
-
-#+BEGIN_SRC python :session :results file
-
-library_name = "Arith"
-lib_location = "./DependencyGraphs/UnsubSub"
-outfile = "Images/comparison_sizes.png"
-
-#num_theorems = int(len(list(filter(lambda x: 'theorems' not in x and 'contents' not in x,
-#                                 filter(lambda y: library_name in y,
-#                                        os.listdir(lib_location)))))/2)
-##fig, axs = plt.subplots(figsize=(6,6))
-#unsub_num_nodes = []
-#sub_num_nodes = []
-#for i in range(num_theorems):
-#    unsub_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_unsub_'+str(i)+'.json'
-#    sub_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(i)+i.json'
-#    with open(unsub_loc,'r') as f:
-#        unsub_graph = nx.DiGraph({k:set(v) for k,v in json.load(f).items()})
-#    with open(sub_loc,'r') as f:
-#        sub_graph = nx.DiGraph({k:set(v) for k,v in json.load(f).items()})
-#    unsub_num_nodes.append(nx.number_of_nodes(unsub_graph))
-#    sub_num_nodes.append(nx.number_of_nodes(sub_graph))
-#
-#fig, axs = plt.subplots(1,1,figsize=(4,4))
-#axs.plot(range(1,num_theorems+1), unsub_num_nodes, 'r', label='unsubst graph')
-#axs.plot(range(1,num_theorems+1), sub_num_nodes, 'b', label='subst graph')
-#axs.set_title('Size Dependency Graph v Num Theorems')
-#axs.set_xlabel('Num input theorems ('+library_name+')')
-#axs.set_ylabel('Num theorems in dependency graph')
-#axs.legend()
-#fig.tight_layout()
-#plt.savefig(outfile)
-
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/comparison_sizes.png]]
-
-
-#+BEGIN_SRC python :session :results file
-
-library_name = "Arith"
-lib_location = "./Graphs/UnsubSub"
-outfile = "Images/comparison_degree_dist.png"
-
-num_theorems = int(len(list(filter(lambda x: 'theorems' not in x and 'contents' not in x,
-                                 filter(lambda y: library_name in y,
-                                        os.listdir(lib_location)))))/2)
-#fig, axs = plt.subplots(figsize=(6,6))
-fig, axs = plt.subplots(num_theorems, 2, sharex=True, sharey=True, figsize=(6,8))
-
-for i in range(num_theorems):
-    unsub_loc = lib_location+'/'+library_name+'_unsub_'+str(i)+'.json'
-    sub_loc = lib_location+'/'+library_name+'_sub_'+str(i)+'.json'
-    with open(unsub_loc,'r') as f:
-        unsub_graph = nx.DiGraph({k:set(v) for k,v in json.load(f).items()})
-    with open(sub_loc,'r') as f:
-        sub_graph = nx.DiGraph({k:set(v) for k,v in json.load(f).items()})
-    unsub_ax, sub_ax = axs[i][0], axs[i][1]
-    unsub_hist, sub_hist = nx.degree_histogram(unsub_graph), nx.degree_histogram(sub_graph)
-    unsub_ax.plot(range(len(unsub_hist)), unsub_hist)
-    sub_ax.plot(range(len(sub_hist)), sub_hist)
-    if i == 0:
-        unsub_ax.set_title('Unsubstituted theorems')
-        sub_ax.set_title('Substituted theorems')
-
-fig.tight_layout()
-plt.savefig(outfile)
-
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/comparison_degree_dist.png]]
-
-** Create dependency graphs straight from unsubbed representations
+** Create theorem dags from unsubbed representations
 
 *** Convert individual theorem tree to graph
 
@@ -1394,13 +699,41 @@ assert(theoremToDAG(ev_4_tree)
 
 #+END_SRC
 
+*** Plot graph utils
+
+#+BEGIN_SRC python :session :results output silent
+
+def plotGraph(graph, outfile, label=False, figsize=(4,4)):
+    assert(graph.order() != 0)
+    plt.figure(figsize=figsize)
+    nx.spring_layout(graph, k=5/math.sqrt(graph.order()))
+    nx.draw(graph, with_labels=label, node_size = 50)
+    l,r = plt.xlim()
+    plt.xlim(l-.2,r+.2)
+    plt.savefig(outfile)
+
+def plotGraphs(g1, g2, outfile, label=False, figsize=(4,4)):
+   if not os.path.exists(outfile):
+       fig, axs = plt.subplots(1,2,figsize=figsize)
+       nx.spring_layout(g1, k=5/math.sqrt(g1.order()))
+       nx.draw(g1, ax=axs[0], with_labels=label, node_size = 50)
+       nx.spring_layout(g2, k=5/math.sqrt(g2.order()))
+       nx.draw(g2, ax=axs[1], with_labels=label, node_size = 50)
+       range1,range2 = axs[0].get_xlim(), axs[1].get_xlim()
+       axs[0].set_xlim(range1[0]-0.2, range1[1]+0.2)
+       axs[1].set_xlim(range2[0]-0.2, range2[1]+0.2)
+       plt.savefig(outfile)
+
+
+#+END_SRC
+
 *** Plot theorem DAG's
 **** ev_4
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'ev_4'
 g = nx.DiGraph(theoremToDAG(ev_4_tree, theorem_name))
-plotDependencyGraph(g,'./Images/'+theorem_name+'_DAG.png',label=True)
+plotGraph(g,'./Images/'+theorem_name+'_DAG.png',label=True)
 './Images/'+theorem_name+'_DAG.png'
 #+END_SRC
 
@@ -1412,7 +745,7 @@ plotDependencyGraph(g,'./Images/'+theorem_name+'_DAG.png',label=True)
 #+BEGIN_SRC python :session :results file
 theorem_name = 'ev_8'
 g = nx.DiGraph(theoremToDAG(ev_8_tree, theorem_name))
-plotDependencyGraph(g, './Images/'+theorem_name+'_DAG.png', label=True)
+plotGraph(g, './Images/'+theorem_name+'_DAG.png', label=True)
 './Images/ev_8_DAG.png'
 #+END_SRC
 
@@ -1425,7 +758,7 @@ plotDependencyGraph(g, './Images/'+theorem_name+'_DAG.png', label=True)
 theorem_name = 'sqrt2_not_rational'
 outfile = './Images/'+theorem_name+'_DAG.png'
 #sqrt2_dag = theoremToDAG(sqrt2_tree, theorem_name)
-#plotDependencyGraph(nx.DiGraph(sqrt2_dag), outfile, label=False, figsize=(8,8))
+#plotGraph(nx.DiGraph(sqrt2_dag), outfile, label=False, figsize=(8,8))
 './Images/'+theorem_name+'_DAG.png'
 #+END_SRC
 
@@ -1437,12 +770,13 @@ theorem_name = 'birthday_paradox'
 outfile = './Images/'+theorem_name+'_DAG.png'
 #bday_tree = theoremNameToLists('birthday_paradox')
 #bday_dag = theoremToDAG(bday_tree, theorem_name)
-#plotDependencyGraph(nx.DiGraph(bday_dag), outfile, label=False, figsize=(8,8))
+#plotGraph(nx.DiGraph(bday_dag), outfile, label=False, figsize=(8,8))
 './Images/'+theorem_name+'_DAG.png'
 #+END_SRC
 
 #+RESULTS:
 [[file:./Images/birthday_paradox_DAG.png]]
+
 
 ** Generate random DAG's with same degree distribution
 *** Generate random replica DAG's with same arities
@@ -1550,7 +884,7 @@ print(genComparableGraph(ev_4_dag))
 outfile = './Images/ev_4_gen_DAG.png'
 ev_4_dag = theoremToDAG(ev_4_tree,'ev_4')
 gen_ev_4_dag = genComparableGraph(ev_4_dag)
-plotDependencyGraphs(nx.DiGraph(ev_4_dag),
+plotGraphs(nx.DiGraph(ev_4_dag),
                      nx.DiGraph(gen_ev_4_dag), outfile, label=True, figsize=(8,8))
 
 './Images/ev_4_gen_DAG.png'
@@ -1565,7 +899,7 @@ plotDependencyGraphs(nx.DiGraph(ev_4_dag),
 outfile = './Images/ev_8_gen_DAG.png'
 ev_8_dag = theoremToDAG(ev_8_tree,'ev_8')
 gen_ev_8_dag = genComparableGraph(ev_8_dag)
-plotDependencyGraphs(nx.DiGraph(ev_8_dag),
+plotGraphs(nx.DiGraph(ev_8_dag),
                      nx.DiGraph(gen_ev_8_dag), outfile, label=True, figsize=(8,8))
 './Images/ev_8_gen_DAG.png'
 #+END_SRC
@@ -1579,7 +913,7 @@ plotDependencyGraphs(nx.DiGraph(ev_8_dag),
 outfile = './Images/ev_4_alt_gen_DAG.png'
 ev_4_alt_dag = theoremToDAG(ev_4_alt_tree,'ev_4_alt')
 gen_ev_4_alt_dag = genComparableGraph(ev_4_alt_dag)
-plotDependencyGraphs(nx.DiGraph(ev_4_alt_dag),
+plotGraphs(nx.DiGraph(ev_4_alt_dag),
                      nx.DiGraph(gen_ev_4_alt_dag), outfile, label=True, figsize=(8,8))
 
 './Images/ev_4_alt_gen_DAG.png'
@@ -1595,7 +929,7 @@ theorem_name = 'sqrt2_not_rational'
 outfile = './Images/'+theorem_name+'_gen_DAG.png'
 #sqrt2_dag = theoremToDAG(sqrt2_tree, 'sqrt2_not_rational')
 #gen_sqrt2_dag = genComparableGraph(sqrt2_dag) #P52 in values but not in keys
-#plotDependencyGraphs(nx.DiGraph(sqrt2_dag),
+#plotGraphs(nx.DiGraph(sqrt2_dag),
 #                     nx.DiGraph(gen_sqrt2_dag), outfile, label=False, figsize=(8,8))
 
 outfile
@@ -1655,7 +989,7 @@ def exportReplicas(theorem_dag, theorem_name, num_replicas):
         for i,g in enumerate(gen_dags):
             G = nx.DiGraph(g)
             nx.write_adjlist(G, outfolder+'gen_dag_adjlist_'+str(i)+'.txt')
-            plotDependencyGraph(G, './Images/'+theorem_name+'_gen_DAG_'+str(i)+'.png')
+            plotGraph(G, './Images/'+theorem_name+'_gen_DAG_'+str(i)+'.png')
 
 #+END_SRC
 
@@ -1665,7 +999,7 @@ def exportReplicas(theorem_dag, theorem_name, num_replicas):
 theorem_name = 'ev_4'
 dag = theoremToDAG(ev_4_tree, theorem_name)
 exportReplicas(dag, theorem_name, 5)
-plotDependencyGraph(nx.DiGraph(dag),'./Images/'+theorem_name+'_orig_DAG.png')
+plotGraph(nx.DiGraph(dag),'./Images/'+theorem_name+'_orig_DAG.png')
 #+END_SRC
 
 **** ev_8
@@ -1674,7 +1008,7 @@ plotDependencyGraph(nx.DiGraph(dag),'./Images/'+theorem_name+'_orig_DAG.png')
 theorem_name = 'ev_8'
 dag = theoremToDAG(ev_8_tree, theorem_name)
 exportReplicas(dag, theorem_name, 5)
-plotDependencyGraph(nx.DiGraph(dag),'./Images/'+theorem_name+'_orig_DAG.png')
+plotGraph(nx.DiGraph(dag),'./Images/'+theorem_name+'_orig_DAG.png')
 #+END_SRC
 
 **** ev_8_alt
@@ -1683,7 +1017,7 @@ plotDependencyGraph(nx.DiGraph(dag),'./Images/'+theorem_name+'_orig_DAG.png')
 theorem_name = 'ev_8_alt'
 dag = theoremToDAG(ev_8_alt_tree, theorem_name)
 exportReplicas(dag, theorem_name, 10)
-plotDependencyGraph(nx.DiGraph(dag),'./Images/'+theorem_name+'_orig_DAG.png')
+plotGraph(nx.DiGraph(dag),'./Images/'+theorem_name+'_orig_DAG.png')
 #+END_SRC
 
 **** sqrt2_not_rational
@@ -1693,6 +1027,7 @@ theorem_name = 'sqrt2_not_rational'
 #dag = theoremToDAG(sqrt2_tree, theorem_name)
 #exportReplicas(dag, theorem_name, 5)
 #+END_SRC
+
 
 ** DAG analysis
 *** Basic DAG Analysis Utils
@@ -2050,7 +1385,7 @@ def getCompressedDAGSizes(dag,repeat=1, theorem_name=None):
             new_dag = removeMatch(match, new_dag)
         sizes.append(len(new_dag))
         if theorem_name:
-            plotDependencyGraph(nx.DiGraph(new_dag),
+            plotGraph(nx.DiGraph(new_dag),
                                 './Images/'+theorem_name+'_dag_compressed_'+str(i+1),
                                 label=True)
     return sizes
@@ -2081,7 +1416,7 @@ def getNumMotifs(dag, repeat=1, check_dag=False, theorem_name=None):
           if check_dag:
               print(str(i+1), nx.is_directed_acyclic_graph(nx.DiGraph(new_dag)))
           if theorem_name:
-              plotDependencyGraph(nx.DiGraph(new_dag),
+              plotGraph(nx.DiGraph(new_dag),
                                 './Images/'+theorem_name+'_dag_compressed_'+str(i+1),
                                 label=True)
       return num_motifs
@@ -2094,7 +1429,7 @@ def getNumMotifs(dag, repeat=1, check_dag=False, theorem_name=None):
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/ev_8_dag_compressed.png'
 new_dag = compressDAG(ev_8_dag)
-plotDependencyGraph(nx.DiGraph(new_dag), outfile, label=True)
+plotGraph(nx.DiGraph(new_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2106,7 +1441,7 @@ outfile = 'Images/ev_8_mod_dag_compressed.png'
 ev_8_dag_mod = ev_8_dag.copy()
 ev_8_dag_mod['2'] = {'ev_8.ev_2'}
 new_dag = compressDAG(ev_8_dag_mod, repeat=2)
-plotDependencyGraph(nx.DiGraph(new_dag), outfile, label=True)
+plotGraph(nx.DiGraph(new_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2118,7 +1453,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/ev_8_alt_dag_compressed.png'
 new_dag = compressDAG(theoremToDAG(ev_8_alt_tree))
-plotDependencyGraph(nx.DiGraph(new_dag), outfile, label=True)
+plotGraph(nx.DiGraph(new_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2128,7 +1463,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/ev_8_alt_dag_compressed_2.png'
 new_dag = compressDAG(theoremToDAG(ev_8_alt_tree),repeat=2)
-plotDependencyGraph(nx.DiGraph(new_dag), outfile, label=True)
+plotGraph(nx.DiGraph(new_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2209,7 +1544,7 @@ outfile = 'Images/factorial_dag.png'
 fact_string = "(Top (Definition Top.fact (Fix (Functions (App fact 0 (Prod n nat nat) (Lambda n nat (Case 0 (Lambda n nat nat) (CaseMatch n) (CaseBranches (App S O) (Lambda n' nat (App Coq.Init.Nat.mul n (App fact n')))))))) 0)))"
 fact_tree = parenStringToLists(fact_string)
 fact_dag = theoremToDAG(fact_tree)
-plotDependencyGraph(nx.DiGraph(fact_dag), outfile, label=True)
+plotGraph(nx.DiGraph(fact_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2222,7 +1557,7 @@ Try compression until cycle creation.
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/factorial_repeat_motif.png'
 dags = getCompressedDAGs(fact_dag, repeat=2)
-plotDependencyGraphList([nx.DiGraph(x) for x in dags], outfile, label=True)
+plotGraphList([nx.DiGraph(x) for x in dags], outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2258,7 +1593,7 @@ outfile = 'Images/forward_dag.png'
 forward_string = "(Top (Definition Top.forward (Lambda f (Prod Anonymous (App prod (Axiom Top.A) (Axiom Top.B)) (Axiom Top.C)) (Lambda a (Axiom Top.A) (Lambda b (Axiom Top.B) (Cast (Cast (App eq_refl (Axiom Top.C) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b))) REVERTcast (App eq (Axiom Top.C) (App f (App pair (Axiom Top.A) (Axiom Top.B) (App Coq.Init.Datatypes.fst (Axiom Top.A) (Axiom Top.B) (App pair (Axiom Top.A) (Axiom Top.B) a b)) (App Coq.Init.Datatypes.snd (Axiom Top.A) (Axiom Top.B) (App pair (Axiom Top.A) (Axiom Top.B) a b)))) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))) REVERTcast (App eq (Axiom Top.C) (App Top.uncurry (App Top.curry f) (App pair (Axiom Top.A) (Axiom Top.B) a b)) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))))))))"
 forward_tree = parenStringToLists(forward_string)
 forward_dag = theoremToDAG(forward_tree)
-plotDependencyGraph(nx.DiGraph(forward_dag), outfile, label=True)
+plotGraph(nx.DiGraph(forward_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2293,7 +1628,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/forward_repeat_motif.png'
 dags = getCompressedDAGs(forward_dag, repeat=3)
-plotDependencyGraphList([nx.DiGraph(x) for x in dags], outfile, label=True)
+plotGraphList([nx.DiGraph(x) for x in dags], outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2309,7 +1644,7 @@ outfile = 'Images/curry_dag.png'
 curry_string = "(Top (Definition Top.curry (Lambda f (Prod Anonymous (App prod (Axiom Top.A) (Axiom Top.B)) (Axiom Top.C)) (Lambda a (Axiom Top.A) (Lambda b (Axiom Top.B) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))))))"
 curry_tree = parenStringToLists(curry_string)
 curry_dag = theoremToDAG(curry_tree)
-plotDependencyGraph(nx.DiGraph(curry_dag), outfile, label=True)
+plotGraph(nx.DiGraph(curry_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2351,7 +1686,7 @@ dec_inc_string = "(Top (Definition Top.dec_inc (Lambda nat (App Top.dec (App S g
 dec_inc_tree = parenStringToLists(dec_inc_string)
 dec_inc_dag = theoremToDAG(dec_inc_tree)
 print(dec_inc_dag)
-plotDependencyGraph(nx.DiGraph(dec_inc_dag), outfile, label=True)
+plotGraph(nx.DiGraph(dec_inc_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2376,7 +1711,7 @@ dec_inc_prop_string = "(Top (Definition Top.dec_inc_prop (Lambda nat (App eq_ref
 dec_inc_prop_tree = parenStringToLists(dec_inc_prop_string)
 dec_inc_prop_dag = theoremToDAG(dec_inc_prop_tree)
 print(dec_inc_prop_dag)
-plotDependencyGraph(nx.DiGraph(dec_inc_prop_dag), outfile, label=True)
+plotGraph(nx.DiGraph(dec_inc_prop_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2453,7 +1788,7 @@ def getNumCycles(dag, repeat=1, check_dag=True, theorem_name=None):
           if check_dag:
               print(str(i+1), nx.is_directed_acyclic_graph(nx.DiGraph(new_dag)))
           if theorem_name:
-              plotDependencyGraph(nx.DiGraph(new_dag),
+              plotGraph(nx.DiGraph(new_dag),
                                 './Images/'+theorem_name+'_dag_compressed_'+str(i+1),
                                 label=True)
       return num_motifs, num_cycles
@@ -2474,30 +1809,30 @@ outfile
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'sqrt2_not_rational'
-outfile = 'Images/'+theorem_name'_num_cycles.png'
+outfile = 'Images/'+theorem_name+'_num_cycles.png'
 sqrt2_dag = theoremToDAG(sqrt2_tree, 'sqrt2_not_rational')
-motifs_and_cycles = getNumCycles(sqrt2_dag, check_dag = False, repeat=300)
+motifs_and_cycles = getNumCycles(sqrt2_dag, check_dag = False, repeat=400)
 plotLineGraphs(motifs_and_cycles, outfile)
 outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:Images/factorial_dag.png]]
+[[file:Images/sqrt2_not_rational_num_cycles.png]]
 [[file:Images/sqrt2_not_rational_gen_num_cycles.png]]
 
 **** sqrt2_not_rational_d3
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'sqrt2_not_rational_d3'
-outfile = 'Images/'+theorem_name'_num_cycles.png'
-sqrt2_d3_dag = theoremToDAG(sqrt2_d3_tree)
-motifs_and_cycles = getNumCycles(sqrt2_d3_dag, check_dag = False, repeat=2000)
-plotLineGraphs(motifs_and_cycles, outfile)
+outfile = 'Images/'+theorem_name+'_num_cycles.png'
+#sqrt2_d3_dag = theoremToDAG(sqrt2_d3_tree)
+#motifs_and_cycles = getNumCycles(sqrt2_d3_dag, check_dag = False, repeat=1500)
+#plotLineGraphs(motifs_and_cycles, outfile)
 outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:Images/factorial_dag.png]]
+[[file:Images/sqrt2_not_rational_d3_num_cycles.png]]
 
 **** sqrt2_not_rational_d4
 
@@ -2512,7 +1847,7 @@ outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:Images/factorial_dag.png]]
+[[file:Images/dec_inc_num_cycles.png]]
 
 
 
@@ -2523,7 +1858,7 @@ outfile = 'Images/eq_dag.png'
 eq_string = "(Top (Definition Top.eq_nat (Lambda nat (App Coq.Init.Datatypes.nat_ind (Lambda nat (App eq nat gen_var_3 gen_var_3)) (App eq_refl nat O) (Lambda nat (Lambda (App eq nat gen_var_4 gen_var_4) (App eq_refl nat (App S gen_var_4)))) gen_var_4))))"
 eq_tree = parenStringToLists(eq_string)
 eq_dag = theoremToDAG(eq_tree)
-plotDependencyGraph(nx.DiGraph(eq_dag), outfile, label=True)
+plotGraph(nx.DiGraph(eq_dag), outfile, label=True)
 outfile
 #+END_SRC
 
@@ -2565,22 +1900,18 @@ printTree(libNameToTree("Arith"), 3)
 #+END_SRC
 
 #+RESULTS:
-#+begin_example
-out
 out
 out
 Traceback (most recent call last):
   File "<stdin>", line 1, in <module>
-  File "/tmp/babel-Wx2Di4/python-EVab2M", line 15, in <module>
+  File "/tmp/babel-pdKdik/python-pqllgw", line 15, in <module>
     printTree(libNameToTree("Arith"), 3)
-  File "/tmp/babel-Wx2Di4/python-gKkeqY", line 24, in printTree
+  File "/tmp/babel-pdKdik/python-G9Xdw8", line 24, in printTree
     for x in printTreeHelper(tree):
-  File "/tmp/babel-Wx2Di4/python-gKkeqY", line 21, in printTreeHelper
-    return [h] + concat([list(map(lambda x: "+---"+x, printTreeHelper(x))) for x in t])
-  File "/tmp/babel-Wx2Di4/python-gKkeqY", line 21, in <listcomp>
-    return [h] + concat([list(map(lambda x: "+---"+x, printTreeHelper(x))) for x in t])
-  File "/tmp/babel-Wx2Di4/python-gKkeqY", line 21, in <lambda>
-    return [h] + concat([list(map(lambda x: "+---"+x, printTreeHelper(x))) for x in t])
+  File "/tmp/babel-pdKdik/python-G9Xdw8", line 20, in printTreeHelper
+    return [h] + list(map(lambda x: "+---"+x, t))
+  File "/tmp/babel-pdKdik/python-G9Xdw8", line 20, in <lambda>
+    return [h] + list(map(lambda x: "+---"+x, t))
 TypeError: must be str, not list
 #+end_example
 
@@ -2591,7 +1922,7 @@ TypeError: must be str, not list
 library_name = "Arith"
 tree = libNameToTree(library_name)
 dag = theoremToDAG(tree)
-plotDependencyGraph(nx.DiGraph(dag), "Images/" + library_name + "_dag.png", label=True)
+plotGraph(nx.DiGraph(dag), "Images/" + library_name + "_dag.png", label=True)
 "Images/" + library_name + "_dag.png"
 #+END_SRC
 

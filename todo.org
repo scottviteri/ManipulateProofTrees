@@ -1,0 +1,12 @@
+
+* TODO Decide if want to merge library and library proof folders
+
+* DONE Separate out functionality for other kind of dag,
+  Where should I put all of the other functions?
+  The first kind of dag should be called dependency graphs
+   Make two separate files
+  Then can change names within ManipPfTrees.org to be more systematic
+
+* TODO Factor out common functionality  between ManipPfTrees.org and GenerateDependencyGraphs.org
+
+* TODO Create DAG for library

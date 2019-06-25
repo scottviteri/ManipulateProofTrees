@@ -1,0 +1,1192 @@
+#+TITLE: Manipulate Proof Trees
+#+OPTIONS: tex:t
+#+STARTUP: latexpreview
+#+LATEX_HEADER: \usepackage{qtree,tiks}
+
+
+* Manip Proof Trees
+** Tree reading / manipulation utilities
+*** Top level imports
+
+#+BEGIN_SRC python :session :results output silent
+
+import math
+import copy
+import itertools
+import pickle
+import ast
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import json
+import functools
+import pdb
+import cProfile
+import subprocess
+import networkx as nx
+import os
+import random
+import community
+import re
+
+#+END_SRC
+
+#+RESULTS:
+
+*** Read tree files into nested lists
+
+First, grab some sample proof trees.
+
+#+RESULTS:
+
+We will need to parse these into a form that python can more directly read.
+
+I am using a list of lists, where [A,B,[C,D]] represents
+ A
+ |\
+ B C
+   |
+   D
+
+**** Trees to nested lists, without natural number substitution
+
+#+BEGIN_SRC python :session :results output silent
+
+def focusToNewLetters(focus_string):
+    if focus_string[1] == '(': return '['
+    elif focus_string[1] == ')': return ']'
+    elif focus_string[1] == ' ': return ','
+    if focus_string[1].isalnum() \
+        and (focus_string[0] == '(' or focus_string[0] == ' ') \
+        and (focus_string[2] == ')' or focus_string[2] == ' '):
+        return '\"'+focus_string[1]+'\"'
+    if focus_string[1] not in '( )' and (focus_string[0] == '(' or focus_string[0] == ' '):
+        # (a -> ("a or ' a' -> ' "a'
+        return '\"'+focus_string[1]
+    if focus_string[1] not in '( )' and (focus_string[2] == ')' or focus_string[2] == ' '):
+        # b) -> b") or 'b ' -> 'b" '
+        return focus_string[1]+'\"'
+    return focus_string[1]
+
+#+END_SRC
+
+**** Tree printing utilities
+
+#+BEGIN_SRC python :session :results output silent
+
+def isFlat(l):
+    return not any(filter(lambda x: isinstance(x,list), l))
+
+def concat(lst_of_lsts):
+    return functools.reduce(lambda x,y:x+y, lst_of_lsts, [])
+
+def printTreeHelper(tree):
+    """ Prints tree by prepending '+---' to each layer
+    Example: printTreeHelper(['Definition', 'Top.ev_2', ['App', 'ev_SS', 'O', 'ev_0']])
+    # base: ['App', 'ev_SS', 'O', 'ev_0'] -> ['App', '+---ev_SS', '+---O', '+---ev_0']
+    # ind_step: ['Definition', 'Top.ev_2', ['App', '+---ev_SS', '+---O', '+---ev_0']]
+    #  -> ['Definition', '+---Top.ev_2', '+---App', '+---+---ev_SS', '+---+---O', '+---+---ev_0']]
+    """
+    h,t = tree[0], tree[1:]
+    if not isinstance(tree, list):
+        assert(isinstance(tree, str))
+        return [tree]
+    if isFlat(tree):
+        return [h] + list(map(lambda x: "+---"+x, t))
+    return [h] + concat([list(map(lambda x: "+---"+x, printTreeHelper(x))) for x in t])
+
+def printTree(tree, max_depth=None):
+    for x in printTreeHelper(tree):
+        if max_depth is not None:
+            if "+---"*max_depth not in x:
+                print(x)
+        else:
+            print(x)
+
+
+#+END_SRC
+
+**** Substitute nat notation of App S chains
+
+#+BEGIN_SRC python :session :results output silent
+
+  def replaceFlatList(lst_of_lsts, match, replacement):
+      any_replacements = False
+      if isinstance(lst_of_lsts, list):
+          for i, lst in enumerate(lst_of_lsts):
+              if lst == match:
+                  lst_of_lsts[i] = replacement
+                  any_replacements = True
+              else:
+                  any_replacements |= replaceFlatList(lst, match, replacement)
+      return any_replacements
+
+  def subNats(lst_of_lsts):
+      l = copy.deepcopy(lst_of_lsts)
+      replaceFlatList(l, ['App','S','O'], '1')
+      replaced, n = True, 1
+      while replaced:
+         replaced = replaceFlatList(l, ['App','S',str(n)], str(n+1))
+         n += 1
+      return l
+
+  def parenStringToLists(paren_string, debug=False):
+      accum = ''
+      paren_string = paren_string.strip()
+      #print(paren_string.count('('), paren_string.count(')'))
+      assert(paren_string.count('(') == paren_string.count(')'))
+      focus = "  " + paren_string[0]
+      for char in paren_string[1:]:
+          focus = focus[1:] + str(char)
+          accum += focusToNewLetters(focus)
+          #print(focus[1], focusToNewLetters(focus))
+      accum += ']'
+      if debug:
+          with open('paren_lists_debug.txt','w') as f:
+              f.write(accum)
+      theorem_rev = subNats(json.loads(accum))
+      return [theorem_rev[0]] + theorem_rev[1:][::-1]
+
+  def theoremNameToLists(theorem_name, depth=2, debug=False):
+      theorem_folder = './ProofTrees/Individual/'+theorem_name
+      if not os.path.exists(theorem_folder):
+          print('Generating proof objects for', theorem_name)
+          subprocess.call(["./coq_proof_to_trees.sh", theorem_name])
+      with open(theorem_folder + '/d'+str(depth)+'.txt', 'r') as f:
+          paren_string = f.read()
+      assert(paren_string != '')
+      return parenStringToLists('(Top ' + paren_string.strip() + ')', debug=debug)
+
+  assert(parenStringToLists('(a b (c d e))') in [['a','b',['c','d','e']], ['a',['c','d','e'],'b']])
+
+#+END_SRC
+
+#+RESULTS:
+
+#+BEGIN_SRC python :session :results output silent
+
+  ev_4_tree = theoremNameToLists('ev_4')
+  ev_4_alt_tree = theoremNameToLists('ev_4_alt')
+  ev_8_tree = theoremNameToLists('ev_8')
+  ev_8_alt_tree = theoremNameToLists('ev_8_alt')
+  sqrt2_tree = theoremNameToLists('sqrt2_not_rational')
+  sqrt2_d3_tree = theoremNameToLists('sqrt2_not_rational', depth=3)
+
+  printTree(ev_4_tree)
+  #printTree(ev_4_alt_tree)
+
+#+END_SRC
+
+*** Substitute definitions back into the original tree branch -- tree modulo theorems
+
+#+BEGIN_SRC python :session :results output silent
+
+def replaceVal(lst_of_lsts, search_val, replace_val):
+    """ similar to subRec, but search target is a single value """
+    lst = []
+    for elem in lst_of_lsts:
+        if search_val == elem:
+            lst.append(replace_val)
+        else:
+            if isinstance(elem,list):
+                lst.append(replaceVal(elem, search_val, replace_val))
+            else:
+                lst.append(elem)
+    return lst
+
+def replaceVals(lst_of_lsts, search_replace_dict):
+    """ similar to replaceVal, but multiple search targets with different replace_vals """
+    l = []
+    for x in lst_of_lsts:
+        if isinstance(x,list):
+            l.append(replaceVals(x, search_replace_dict))
+        else:
+            if x in search_replace_dict:
+                l.append(search_replace_dict[x])
+            else:
+                l.append(x)
+    return l
+
+def replaceValsEffect(lst_of_lsts, search_replace_dict):
+    for i in range(len(lst_of_lsts)):
+        x = lst_of_lsts[i]
+        if isinstance(x,list):
+            replaceValsEffect(x, search_replace_dict)
+        else:
+            if x in search_replace_dict:
+                lst_of_lsts[i] = search_replace_dict[x]
+
+
+def accumMatches(lst_of_lsts, test):
+    l = []
+    for x in lst_of_lsts:
+        if isinstance(x, list):
+            l.extend(accumMatches(x, test))
+        else:
+            if test(x):
+                l.append(x)
+    return l
+
+def inNestedList(elem, lst_of_lsts):
+    for x in lst_of_lsts:
+        if isinstance(x,list):
+            if inNestedList(elem, x):
+                return True
+        else:
+            if elem == x:
+                return True
+    return False
+
+
+def allAtLeaves(elems, tree):
+    l = []
+    if isinstance(tree, list):
+        for x in tree[1:]:
+            l.extend(allAtLeaves(elems, x))
+    else:
+        if tree in elems:
+            l.append(tree)
+    return l
+
+assert(allAtLeaves(['a','b','c'], ['a',['b','c']]) == ['c'])
+
+def replaceDefinitions(lst_of_lsts, max_depth=math.inf, debug=False):
+    """ Substitute unrolled definitions back into main top level definition """
+    orig_tree, dep_trees = lst_of_lsts[1], lst_of_lsts[2:]
+    replace_string_candidates = list(map(lambda x:x[1], dep_trees))
+    def_to_subtree = {x[1]:x[2] for x in lst_of_lsts}
+    dep_dict = {x[1]: set(allAtLeaves(replace_string_candidates, x[2])) for x in lst_of_lsts}
+    replace_strings = dep_dict[orig_tree[1]]
+    depth = 0
+    search_replace_dict = {}
+    while replace_strings and depth < max_depth:
+        search_replace_dict = {k:def_to_subtree[k] for k in replace_strings}
+        orig_tree = replaceVals(orig_tree, search_replace_dict)
+        depth += 1
+        replace_strings = set().union(*[dep_dict[x] for x in replace_strings])
+    search_replace_dict = {k:def_to_subtree[k] for k in replace_strings}
+    orig_tree = replaceVals(orig_tree, search_replace_dict)
+    if debug:
+        with open('replace_def_debug.txt','w') as f:
+            f.write(str(orig_tree))
+    return orig_tree
+
+printTree(replaceDefinitions(ev_8_alt_tree),4)
+
+#+END_SRC
+
+#+RESULTS:
+
+*** Proof tree plotting utilities
+
+#+BEGIN_SRC python :session :results output silent
+
+def sumLsts(lsts):
+    max_len = max(map(len, lsts))
+    def zeroFill(lst): return lst + [0]*(max_len - len(lst))
+    return list(map(sum, zip(*map(zeroFill,lsts))))
+
+def countNodesAtDepths(tree):
+    """ Counts num nodes at each depth
+    Example: countNodesAtDepths(['a', 'b', ['c','d','e'], ['c','d','e']])
+    # base: ['c','d','e'] -> [1,2], 'b' -> [1]
+    # ind_step: ['a', [1], [1,2], [1,2]] -> [1,3,4]
+    """
+    if not isinstance(tree, list): return [1]
+    h,t = tree[0], tree[1:]
+    if isFlat(tree): return [1,len(t)]
+    return [1] + sumLsts(list(map(countNodesAtDepths, t)))
+
+def countNodes(tree):
+    if not isinstance(tree, list): return 1
+    return 1 + sum([countNodes(branch) for branch in tree[1:]])
+
+def findAdd(tree):
+    if not isinstance(tree, list):
+        return False
+    else:
+        if tree[0] == 'add':
+            print(tree)
+            return True
+        return any([findAdd(t) for t in tree[1:]])
+
+def strip(s):
+    return s.split('/')[-1]
+
+def modStrip(s):
+    l = s.split('/')
+    return l[-2] + '_' + l[-1]
+
+assert(countNodesAtDepths(['a', 'b', ['c','d','e'], ['c','d','e']]) == [1,3,4])
+
+#+END_SRC
+
+** Plot num nodes at particular tree depths
+
+*** Plot depth utils
+
+#+BEGIN_SRC python :session :results output silent
+
+def plotNodesVTreeDepth(theorem_name, max_depth, debug=False):
+  f = 'Images/'+theorem_name+'_tree_depth_'+str(max_depth)+'.png'
+  if not os.path.isfile(f):
+      fig, ax = plt.subplots(figsize=(6,6))
+      for d in range(1,max_depth+1):
+          if d == 1:
+              ax = plt.subplot(max_depth,1,d)
+          else:
+              ax = plt.subplot(max_depth,1,d, sharex = ax)
+          ax.set_title(theorem_name + ' expansion #'+str(d))
+          tree = theoremNameToLists(theorem_name, depth=d, debug=debug)
+          ax.plot(countNodesAtDepths(replaceDefinitions(tree)))
+          ax.set_xlabel('Tree Depth (Distance from Root)')
+          ax.set_ylabel('Number of Nodes')
+          #else:
+          #    ax.plot(countNodesAtDepths(tree)[1:], '_', label='No substitution')
+          #    ax.plot(countNodesAtDepths(replaceDefinitions(tree)), '|', label='Defn substitution')
+          fig.tight_layout()
+          #ax.legend()
+          #if d != max_depth:
+          #    plt.setp(ax.get_xticklabels(), visible=False)
+      plt.savefig(f)
+
+def depthToNumNodes(depth, theorem_name):
+   tree = theoremNameToLists(theorem_name, depth=depth)
+   substitutionTree = replaceDefinitions(tree)
+   return countNodes(substitutionTree)
+
+def plotNodesVExtractionDepth(theorem_name, max_depth, figsize = (6,6)):
+   f = 'Images/'+theorem_name+'_extraction_depth_'+str(max_depth)+'.png'
+   if not os.path.isfile(f):
+       fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+       depth_list = list(range(1,max_depth+1))
+       #log_depth_list = list(map(lambda x: math.log(x), depth_list))
+       num_nodes = list(map(lambda depth: depthToNumNodes(depth, theorem_name), depth_list))
+       axs.plot(depth_list, num_nodes, 'r+')
+       axs.set_title('Substitution Tree # Nodes Vs Extraction Depth')
+       axs.set_xlabel('Extraction Depth')
+       axs.set_ylabel('Number of Nodes')
+       #axs[1][1].plot(log_depth_list, list(map(lambda x: math.log(x), sub_tree_num_nodes)))
+       #axs[1][1].set_xlabel('Log Extraction Depth')
+       fig.tight_layout()
+       plt.savefig(f)
+
+
+ #+END_SRC
+
+*** ev_4
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'ev_4'
+    max_depth = 3
+    plotNodesVTreeDepth(theorem_name, max_depth=max_depth)
+    'Images/'+theorem_name+'_tree_depth_'+str(max_depth)+'.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ev_4_tree_depth_3.png]]
+file:Images/ev_4_tree_depth_3.png]]
+
+*** ev_8
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'ev_8'
+    max_depth = 3
+    plotNodesVTreeDepth(theorem_name,max_depth=max_depth)
+    'Images/'+theorem_name+'_tree_depth_'+str(max_depth)+'.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ev_8_tree_depth_3.png]]
+file:Images/ev_8_tree_depth_3.png]]
+
+*** sqrt2_not_rational
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'sqrt2_not_rational'
+    max_depth = 3
+    plotNodesVTreeDepth(theorem_name,max_depth=max_depth)
+    'Images/'+theorem_name+'_tree_depth_'+str(max_depth)+'.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/sqrt2_not_rational_tree_depth_3.png]]
+file:Images/sqrt2_not_rational_tree_depth_4.png]]
+
+*** birthday_paradox
+
+ #+BEGIN_SRC python :session :results file
+     theorem_name = 'birthday_paradox'
+     max_depth = 3
+     #plotNodesVTreeDepth(theorem_name, max_depth=max_depth)
+     'Images/'+theorem_name+'_tree_depth_'+str(max_depth)+'.png'
+ #+END_SRC
+
+ #+RESULTS:
+ [[file:Images/birthday_paradox_tree_depth_3.png]]
+
+*** bertrand_ballot
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'bertrand_ballot'
+    max_depth = 3
+    #plotNodesVTreeDepth(theorem_name, max_depth=max_depth)
+    'Images/'+theorem_name+'_tree_depth_'+str(max_depth)+'.png'
+#+END_SRC
+
+ #+RESULTS:
+ [[file:Images/bertrand_ballot_tree_depth_3.png]]
+
+*** Plot num nodes of the tree at particular extraction depths
+**** ev_8
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'ev_8'
+    max_depth = 3
+    plotNodesVExtractionDepth(theorem_name,max_depth=max_depth)
+    'Images/'+theorem_name+'_extraction_depth_'+str(max_depth)+'.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ev_8_extraction_depth_3.png]]
+
+**** sqrt2_not_rational
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'sqrt2_not_rational'
+    max_depth = 3
+    plotNodesVExtractionDepth(theorem_name,max_depth=max_depth)
+    'Images/'+theorem_name+'_extraction_depth_'+str(max_depth)+'.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/sqrt2_not_rational_extraction_depth_3.png]]
+
+**** birthday_paradox
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'birthday_paradox'
+    max_depth = 3
+    #plotNodesVExtractionDepth(theorem_name, max_depth=max_depth)
+    'Images/'+theorem_name+'_extraction_depth_'+str(max_depth)+'.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/birthday_paradox_extraction_depth_3.png]]
+
+**** bertrand_ballot
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'bertrand_ballot'
+    max_depth = 3
+    #plotNodesVExtractionDepth(theorem_name, max_depth=max_depth)
+    'Images/'+theorem_name+'_extraction_depth_'+str(max_depth)+'.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/bertrand_ballot_extraction_depth_3.png]]
+
+*** Plot subtree sizes
+**** Utilities
+
+#+BEGIN_SRC python :session :results output silent
+
+    def getTreeSize(tree):
+        c = 0
+        for x in tree:
+            if isinstance(x,list):
+                c += getTreeSize(x)
+            else:
+                c += 1
+        return c
+
+    def createSubtreeSizePlot(theorem_name, max_depth, num_bins=10, debug=False):
+        f = 'Images/'+theorem_name+'_subtree_sizes.png'
+        if not os.path.isfile(f):
+            fig, axs = plt.subplots(max_depth, 1, sharex = True, figsize=(6,6))
+            for depth in range(1,max_depth+1):
+                tree = theoremNameToLists(theorem_name, depth=depth)
+                if debug:
+                    printTree(tree)
+                distrib = list(map(getTreeSize, tree[1:]))
+                if max_depth > 1:
+                    axs[depth-1].hist(distrib, bins=num_bins)
+                    axs[depth-1].set_title(theorem_name + ' subtree sizes at depth ' + str(depth))
+                else:
+                    axs.hist(distrib, bins=num_bins)
+                    axs.set_title(theorem_name + ' subtree sizes at depth ' + str(depth))
+                #print(distrib)
+            plt.savefig(f)
+
+#+END_SRC
+
+**** ev_4
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'ev_4'
+    createSubtreeSizePlot(theorem_name, max_depth=3)
+    'Images/'+theorem_name+'_subtree_sizes.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ev_4_subtree_sizes.png]]
+
+The two subtrees just happen to be the same size for ev_4 at extraction depth 2.
+
+**** ev_8
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'ev_8'
+    createSubtreeSizePlot(theorem_name, max_depth=3)
+    'Images/'+theorem_name+'_subtree_sizes.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ev_8_subtree_sizes.png]]
+
+**** sqrt2_not_rational
+
+#+BEGIN_SRC python :session :results file
+    theorem_name = 'sqrt2_not_rational'
+    createSubtreeSizePlot(theorem_name, max_depth=5, num_bins=40)
+    'Images/'+theorem_name+'_subtree_sizes.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/sqrt2_not_rational_subtree_sizes.png]]
+
+Massive outliers are inherent.
+
+
+** Create dependency graph of theorems
+*** Graph plotting utils
+**** Dependency graph for a single root theorem
+
+Goal: given a collection of theorems, create the list of theorems that they reference.
+ Then use these theorems and lists to generate a directed graph.
+
+How to deal with extraction depth?
+ Use only extraction depth 1.
+ This way we only generate the graph of "local" dependencies
+
+How to start?
+ Use ev_4 and ev_8. There should be a dependencies from ev_8 to ev_4.
+ Then move on to standard library.
+
+#+BEGIN_SRC python :session :results output silent
+
+def theoremToDependencyDict(theorem):
+    assert(theorem[0] == 'Top')
+    theorem_to_dependencies = {}
+    top, theorem_trees = theorem[0], theorem[1:]
+    lemma_candidates = list(map(lambda x: x[1], theorem_trees))
+    old_frontier_theorem_indices = [0]
+    while old_frontier_theorem_indices:
+        new_frontier_theorem_indices = []
+        for theorem_i in old_frontier_theorem_indices:
+            theorem_name = lemma_candidates[theorem_i]
+            dependencies = allAtLeaves(lemma_candidates[max(old_frontier_theorem_indices)+1:],
+                                       theorem_trees[theorem_i])
+            theorem_to_dependencies[theorem_name] = dependencies
+            new_frontier_theorem_indices.extend(
+                list(map(lambda x: lemma_candidates.index(x), dependencies)))
+        old_frontier_theorem_indices = new_frontier_theorem_indices.copy()
+    #print(theorem_to_dependencies)
+    return {k:set(v) for k,v in theorem_to_dependencies.items()}
+
+def theoremToDependencyGraph(theorem):
+    return nx.DiGraph(theoremToDependencyDict(theorem))
+
+assert(theoremToDependencyDict(
+           ['Top', ['Def','a','b'], ['Def','b',['c','d']]])
+      == {'a':{'b'}, 'b':set()})
+
+assert(theoremToDependencyDict(
+            ['Top', ['Def','a','b'], ['Def','b',['App','c','d']], ['Def','c','e'], ['Def','d','e']]
+       )
+       == {'a':{'b'},'b':{'c','d'},'c':set(),'d':set()})
+
+#+END_SRC
+
+#+RESULTS:
+
+**** Dependency graph for a list of theorems
+
+#+BEGIN_SRC python :session :results output silent
+
+def mergeDicts(d1,d2):
+    merged_dict = {}
+    k1, k2 = set(d1.keys()), set(d2.keys())
+    for k in k1.union(k2):
+        if k in k1 and k in k2:
+            merged_dict[k] = d1[k].union(d2[k])
+        elif k in k1:
+            merged_dict[k] = d1[k]
+        elif k in k2:
+            merged_dict[k] = d2[k]
+    return merged_dict
+
+def theoremListToDependencyDict(theorem_list):
+    dep_dicts = list(map(lambda theorem: theoremToDependencyDict(theorem), theorem_list))
+    return functools.reduce(mergeDicts, dep_dicts, {})
+
+def theoremListToDependencyGraph(theorem_list):
+    return nx.DiGraph(theoremListToDependencyDict(theorem_list))
+
+d1 = {'a':{'b'}, 'b':{}}
+d2 = {'a':{'b'},'b':{'c','d'},'c':set(),'d':set()}
+assert(mergeDicts(d1,{}) == d1)
+assert(mergeDicts({},d1) == d1)
+
+theorem_list =  \
+    [
+        ['Top', ['Def','a','b'], ['Def','b',['c','d']]],
+        ['Top',
+                ['Def','a','b'], ['Def','b',['App','c','d']], ['Def','c','e'], ['Def','d','e']
+        ]
+    ]
+
+assert(theoremListToDependencyDict(theorem_list) == d2)
+
+#+END_SRC
+
+**** Plot/Export graph for non-library theorems
+
+#+BEGIN_SRC python :session :results output silent
+
+def plotDependencyGraph(graph, outfile, label=False, figsize=(4,4)):
+    assert(graph.order() != 0)
+    plt.figure(figsize=figsize)
+    nx.spring_layout(graph, k=5/math.sqrt(graph.order()))
+    nx.draw(graph, with_labels=label, node_size = 50)
+    l,r = plt.xlim()
+    plt.xlim(l-.2,r+.2)
+    plt.savefig(outfile)
+
+def theoremNameToOutfile(theorem_name):
+    return 'Images/' + theorem_name + '_dependencies.png'
+
+def exportIndivResults(theorem_name, theorem, graph, depth):
+    list_outfolder = "./ProofList/Individual/" + theorem_name
+    graph_outfolder = "./DependencyGraphs/Individual/" + theorem_name
+    if not os.path.exists(list_outfolder):
+        os.mkdir(list_outfolder)
+    if not os.path.exists(graph_outfolder):
+        os.mkdir(graph_outfolder)
+    with open(list_outfolder + "/d"+str(depth)+".txt",'w') as f:
+        f.write(json.dumps(theorem))
+    nx.write_adjlist(graph, graph_outfolder + "/d"+str(depth)+".txt")
+
+def plotDepGraphFromTheoremName(theorem_name, depth=2, label=False, figsize=(4,4), export=False):
+    outfile = theoremNameToOutfile(theorem_name)
+    if not os.path.exists(outfile):
+        theorem = theoremNameToLists(theorem_name, depth=depth)
+        graph = theoremToDependencyGraph(theorem)
+        if export:
+            exportIndivResults(theorem_name, theorem, graph, depth)
+        plotDependencyGraph(graph, outfile, label=label, figsize=figsize)
+
+
+#+END_SRC
+
+**** Plot/Export graph for library theorems
+
+#+BEGIN_SRC python :session :results output silent
+
+def libTheoremNameToLists(theorem_name, library_name, debug=False):
+    theorem_location = './ProofTrees/StdLib/'+library_name
+    with open(theorem_location + '/'+theorem_name+'.txt', 'r') as f:
+        paren_string = f.read()
+    if paren_string:
+        return parenStringToLists('(Top ' + paren_string.strip() + ')', debug=debug)
+    else:
+        return []
+
+def nameToStdLibTheorems(library_name, debug=False, limit=None):
+    lib_location = "./ProofTrees/StdLib/" + library_name
+    if not os.path.exists(lib_location):
+        subprocess.run(["./lib_to_trees.sh", library_name])
+    theorem_names = list(map(lambda x: x[:-4], os.listdir(lib_location)))
+    if limit:
+        theorem_names = theorem_names[:limit]
+    theorems = {}
+    for theorem_name in theorem_names:
+        unsub_theorem_def = libTheoremNameToLists(theorem_name, library_name, debug=debug)
+        if unsub_theorem_def != []:
+            theorems[theorem_name] = unsub_theorem_def
+    return theorems
+
+def libNameToOutfile(library_name):
+    return 'Images/' + library_name + '_library_dependencies.png'
+
+def exportLibResults(library_name, theorems, graph, depth):
+    list_outfolder = "./ProofList/StdLib/" + library_name
+    graph_outfolder = "./DependencyGraphs/StdLib/" + library_name
+    if not os.path.exists(list_outfolder):
+        os.mkdir(list_outfolder)
+    if not os.path.exists(graph_outfolder):
+        os.mkdir(graph_outfolder)
+    for theorem_name, theorem_def in theorems.items():
+        with open(list_outfolder + '/' + theorem_name + '.txt','w') as f:
+            f.write(json.dumps(theorem_def))
+    nx.write_adjlist(graph, graph_outfolder + '/' + library_name + '.txt')
+
+
+def plotDepGraphFromLibraryName(library_name, depth=2, label=False, figsize = (8,6), export=False, debug=False):
+    assert(library_name in os.listdir('/home/scottviteri/LocalSoftware/coq/theories'))
+    outfile = libNameToOutfile(library_name)
+    if not os.path.exists(outfile):
+        theorems = nameToStdLibTheorems(library_name, debug=debug)
+        graph = theoremListToDependencyGraph(theorems.values())
+        if export:
+            exportLibResults(library_name, theorems, graph, depth)
+        plotDependencyGraph(graph, outfile, label=label, figsize=figsize)
+
+#+END_SRC
+
+#+RESULTS:
+
+*** Plot dependency graphs for non-library theorems
+**** ev_8
+
+#+BEGIN_SRC python :session :results file
+theorem_name = 'ev_8'
+plotDepGraphFromTheoremName(theorem_name, label=True)
+theoremNameToOutfile(theorem_name)
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ev_8_dependencies.png]]
+
+**** sqrt2_not_rational
+
+#+BEGIN_SRC python :session :results file
+theorem_name = 'sqrt2_not_rational'
+plotDepGraphFromTheoremName(theorem_name, figsize = (8,6), label=True)
+theoremNameToOutfile(theorem_name)
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/sqrt2_not_rational_dependencies.png]]
+
+**** birthday_paradox
+
+#+BEGIN_SRC python :session :results file
+theorem_name = 'birthday_paradox'
+plotDepGraphFromTheoremName(theorem_name, figsize = (8,6),label=True)
+theoremNameToOutfile(theorem_name)
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/birthday_paradox_dependencies.png]]
+
+
+Hypothesis about what is going on here:
+ Library theorems have many more direct dependencies than the average Coq proof
+
+**** bertrand_ballot
+
+#+BEGIN_SRC python :session :results file
+theorem_name = 'bertrand_ballot'
+plotDepGraphFromTheoremName(theorem_name, figsize = (8,6), label=True)
+theoremNameToOutfile(theorem_name)
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/bertrand_ballot_dependencies.png]]
+
+*** Plot dependency graphs for libraries
+**** Reals
+
+#+BEGIN_SRC python :session :results file
+library_name = "Reals"
+plotDepGraphFromLibraryName(library_name, label=False)
+libNameToOutfile(library_name)
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/Reals_library_dependencies.png]]
+
+**** Arith
+
+#+BEGIN_SRC python :session :results file
+library_name = "Arith"
+plotDepGraphFromLibraryName(library_name, label=False)
+libNameToOutfile(library_name)
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/Arith_library_dependencies.png]]
+
+**** ZArith
+
+#+BEGIN_SRC python :session :results file
+library_name = "ZArith"
+plotDepGraphFromLibraryName(library_name, label=False)
+libNameToOutfile(library_name)
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ZArith_library_dependencies.png]]
+
+
+Convert non-unique, ordered tree to unique, unordered dag
+
+#+BEGIN_SRC python :session :results output silent
+
+def countMatches(subtree, tree): #could make efficient by only doing to 2
+    if subtree == tree:
+        return 1
+    if not isinstance(tree,list):
+        return 0
+    count = 0
+    for x in tree[1:]:
+        if x == subtree:
+            count += 1
+        else:
+            count += countMatches(subtree, x)
+    return count
+
+assert(countMatches(3, ['a','b',[1,3,4]]) == 1)
+
+ab_list = ['Top', ['Def',['a','b'],['a','b']], ['Def',['a','b']]]
+assert(countMatches(['a','b'], ab_list) == 3)
+
+def locateMatches(subtree, tree):
+    """ Get locations of matches, as index list
+    Base: locateMatches(['a','b'], ['Def',['a','b'],['a','b']]) -> [[1],[2]]
+    Ind: locateMatches(['a','b'], ['Top', [1,2], [1]]) -> [[1,1], [1,2], [2,1]]
+    """
+    assert(subtree != tree)
+    #assert(isinstance(tree,list))
+    locations = []
+    for i in range(1,len(tree)):
+        x = tree[i]
+        if x == subtree:
+            locations.append([i])
+        else:
+            if isinstance(x, list):
+                locations.extend([[i] + y for y in locateMatches(subtree, x)])
+    return locations
+
+assert(locateMatches(3, ['a','b',[1,3,4]]) == [[2,1]])
+assert(locateMatches(['a','b'], ab_list) == [[1, 1], [1, 2], [2, 1]])
+assert(locateMatches('2',['Def','d2'])==[])
+assert(locateMatches('2', ['Top', ['Def', 'd1', ['App', '2', '3']], ['Def', 'd2']])
+        == [[1,2,1]])
+
+#+END_SRC python :session :results output silent
+
+#+BEGIN_SRC python :session :results output silent
+
+def removeSubtreeEffect(subtree, tree):
+    while 1:
+        for i in range(1,len(tree)):
+            next_tree = tree[i]
+            if subtree == next_tree:
+                del tree[i]
+            else:
+                removeSubtree(subtree, next_tree)
+        return
+
+def removeSubtree(subtree, tree):
+    if not isinstance(tree, list):
+        return tree
+    h,t = tree[0], tree[1:]
+    l = [h]
+    for x in t:
+        if subtree == x:
+            continue
+        else:
+            l.append(removeSubtree(subtree, x))
+    return l
+
+assert(removeSubtree(['a','b'], ab_list) == ['Top', ['Def'], ['Def']])
+
+def getLeaves(tree):
+    leaves = []
+    for x in tree[1:]:
+        if not isinstance(x,list):
+            leaves.append(x)
+        else:
+            leaves.extend(getLeaves(x))
+    return leaves
+
+assert(getLeaves(ev_4_tree) ==
+       ['ev_4.ev_4', 'ev_SS', '2', 'ev_4.ev_2', 'ev_4.ev_2', 'ev_SS', 'O', 'ev_0']
+)
+
+
+def getTheoremLeaves(tree):
+    top, defs = tree[0], tree[1:]
+    all_leaves = map(getLeaves, [x[2] for x in defs if len(x) >= 3])
+    return functools.reduce(lambda x,y: x+y, all_leaves, [])
+
+assert(getTheoremLeaves(ev_4_tree) ==
+    ['ev_SS', '2', 'ev_4.ev_2', 'ev_SS', 'O', 'ev_0']
+)
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+
+def compressTrees(trees, new_theorem_name='th0'):
+    frontier = [trees]
+    index_list = []
+    all_matches = []
+    while frontier:
+        index_count = 0
+        current_node = frontier.pop(0)
+        if isinstance(current_node, list):
+            name = current_node[0]
+            for i in range(1,len(current_node)):
+                match_tree = current_node[i]
+                if isinstance(match_tree, list) :
+                    num_matches = countMatches(match_tree, trees)
+                    if num_matches >= 2:
+                        all_matches.append((match_tree, num_matches*countNodes(match_tree)))
+            frontier.extend(current_node[1:])
+            index_list.append(index_count)
+
+    if all_matches:
+        match_tree = max(all_matches, key=lambda x:x[1])[0]
+        match_locations = locateMatches(match_tree, trees)
+        match_theorem_names = [trees[loc[0]][1] for loc in match_locations]
+        compressed_tree = replaceVal(trees, match_tree, new_theorem_name)
+        compressed_tree.append(['Definition', new_theorem_name, match_tree])
+        #compressed_tree = removeSubtree(match_tree, trees)
+        return match_tree, match_theorem_names, compressed_tree
+
+    #print('all_matches', all_matches)
+    return (None, None, trees)
+
+
+def labelLeaves(trees):
+    # extract leaves
+    leaves_to_theorems = {}
+    leaves = set(getTheoremLeaves(trees))
+    for leaf in leaves:
+        match_locations = locateMatches(leaf, trees)
+        match_theorem_names = [trees[loc[0]][1] for loc in match_locations]
+        leaves_to_theorems[leaf] = match_theorem_names
+    return leaves_to_theorems
+
+
+def substTreesToDepGraph(trees):
+    depends_on = {k[1]:set() for k in trees[1:]}
+    contents = {}
+    match_tree = True
+    match_count = 0
+    while match_tree is not None: #repeat until no matches
+        new_theorem_name = 'th' + str(match_count)
+        (match_tree, match_names, trees) = compressTrees(trees, new_theorem_name)
+        if match_tree:
+            contents[new_theorem_name] = match_tree
+            for match_name in match_names:
+                depends_on[match_name].add(new_theorem_name)
+            #trees.append(['Definition',new_theorem_name, match_tree])
+            depends_on[new_theorem_name] = set()
+        match_count += 1
+    #if not contents:
+    #    contents = {k[1]:k[2] for k in trees[1:]}
+    contents = {k[1]:k[2] for k in trees[1:]}
+    return depends_on, contents
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+
+def plotDependencyGraphs(g1, g2, outfile, label=False, figsize=(4,4)):
+    if not os.path.exists(outfile):
+        fig, axs = plt.subplots(1,2,figsize=figsize)
+        nx.spring_layout(g1, k=5/math.sqrt(g1.order()))
+        nx.draw(g1, ax=axs[0], with_labels=label, node_size = 50)
+        nx.spring_layout(g2, k=5/math.sqrt(g2.order()))
+        nx.draw(g2, ax=axs[1], with_labels=label, node_size = 50)
+        range1,range2 = axs[0].get_xlim(), axs[1].get_xlim()
+        axs[0].set_xlim(range1[0]-0.2, range1[1]+0.2)
+        axs[1].set_xlim(range2[0]-0.2, range2[1]+0.2)
+        plt.savefig(outfile)
+
+def plotDependencyGraphList(g_list, outfile, label=False):
+    figsize = (6,3*len(g_list))
+    fig, axs = plt.subplots(len(g_list),1,figsize=figsize)
+    for i in range(len(g_list)):
+        g, ax = g_list[i], axs[i]
+        nx.spring_layout(g, k=5/math.sqrt(g.order()))
+        nx.draw(g, ax=ax, with_labels=label, node_size = 50)
+        range1 = ax.get_xlim()
+        ax.set_xlim(range1[0]-0.2, range1[1]+0.2)
+    plt.savefig(outfile)
+
+def wrap(y):
+    return {k:[v] if not isinstance(v,list) else v for k,v in y.items()}
+
+#+END_SRC
+
+*** Tree to DAG util examples
+
+#+BEGIN_SRC python :session :results output silent
+
+t1 = ['Top',['Def','d1',['App','2','2']],['Def','d2',['App','2','2']]]
+assert(substTreesToDepGraph(t1) ==
+    ({'d1': {'th0'}, 'd2': {'th0'}, 'th0': set()},
+     {'d1': 'th0', 'd2': 'th0', 'th0': ['App', '2', '2']}))
+
+t2 = ['Top',['Def','d1',['App','2','2']],['Def','d2','2']]
+assert(substTreesToDepGraph(t2) ==
+        ({'d1': set(), 'd2': set()}, {'d1': ['App', '2', '2'], 'd2': '2'}))
+
+t3 = ['Top',['Def','d1',['App','2','3',['App','2','2']]],['Def','d2',['App','2','2']]]
+assert(substTreesToDepGraph(t3) ==
+        ({'d1': {'th0'}, 'd2': {'th0'}, 'th0': set()},
+         {'d1': ['App', '2', '3', 'th0'], 'd2': 'th0', 'th0': ['App', '2', '2']}))
+
+t4 = ['Top',
+        ['Def', 'd1', ['App', ['App', '2', '2'], ['App', '2', '2']]],
+        ['Def', 'd2', ['App', ['App', '2', '2'], ['App', '2', '2']]]]
+assert(substTreesToDepGraph(t4) ==
+        ({'d1': {'th0'}, 'd2': {'th0'}, 'th0': {'th1'}, 'th1': set()},
+         {'d1': 'th0', 'd2': 'th0', 'th0': ['App', 'th1', 'th1'], 'th1': ['App', '2', '2']}))
+
+
+#+END_SRC
+
+*** Tree to DAG for indiv theorems
+
+If there are no secondary
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/ev_4_gen_dep_graph.png'
+x,y = substTreesToDepGraph(['Top',replaceDefinitions(ev_4_tree)])
+plotDependencyGraph(nx.DiGraph(x), outfile, label=True)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ev_4_gen_dep_graph.png]]
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/ev_8_alt_gen_dep_graph.png'
+x,y = substTreesToDepGraph(['Top', replaceDefinitions(ev_8_alt_tree)])
+plotDependencyGraph(nx.DiGraph(x),
+                      outfile, label=True, figsize=(4,4))
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/ev_8_alt_gen_dep_graph.png]]
+
+*** Tree to DAG for library theorems
+
+#+BEGIN_SRC python :session :results output silent
+def nameToStdLibTheoremPairs(library_name, debug=False):
+    lib_location = "./ProofTrees/StdLib/" + library_name
+    if not os.path.exists(lib_location):
+        subprocess.run(["./lib_to_trees.sh", library_name])
+    theorem_names = list(map(lambda x: x[:-4], os.listdir(lib_location)))
+    count = 0
+    should_compute = yield
+    for theorem_name in theorem_names:
+        #print("theorem_name:", theorem_name)
+        #print("should_compute:", should_compute)
+        if should_compute:
+            unsub_theorem_def = libTheoremNameToLists(theorem_name, library_name, debug=debug)
+            if unsub_theorem_def != []:
+                sub_theorem_def = replaceDefinitions(unsub_theorem_def)
+                count += 1
+                should_compute = yield((unsub_theorem_def, sub_theorem_def))
+        else:
+            should_compute = yield
+
+
+#+END_SRC
+
+
+#+BEGIN_SRC python :session :results output silent
+
+library_name = 'Arith'
+max_num_theorems = 3
+theorem_generator = nameToStdLibTheoremPairs(library_name)
+next(theorem_generator)
+plot = True
+
+theorem_count = 0
+unsub_dep_dict = {}
+rooted_sub_trees = ['Top']
+while theorem_count < max_num_theorems:
+    outfile = 'Images/combined_dep_graphs_'+str(theorem_count)+'.png'
+    sub_dict_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'.json'
+    sub_theorems_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_theorems.json'
+    unsub_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_unsub_'+str(theorem_count)+'.json'
+    if os.path.exists(sub_theorems_loc) and os.path.exists(unsub_loc) and os.path.exists(sub_dict_loc):
+        rooted_sub_trees = json.load(open(sub_theorems_loc))
+        unsub_dep_dict = {k:set(v) for k,v in json.load(open(unsub_loc)).items()}
+        next(theorem_generator)
+    else:
+        unsub, sub = theorem_generator.send(True) #add a theorem to the pool
+        # add new unsub dependency dict to the previous
+        unsub_dep_dict = mergeDicts(unsub_dep_dict, theoremToDependencyDict(unsub))
+        # accumuluate sub tree output of theorem generator
+        rooted_sub_trees.append(sub)
+        with open(sub_theorems_loc,'w') as f:
+           f.write(json.dumps(rooted_sub_trees))
+        # create subst tree dependency dict, save
+        sub_dep_dict, sub_dep_contents = substTreesToDepGraph(rooted_sub_trees)
+        print(sub_dep_dict)
+        with open(sub_dict_loc,'w') as f:
+            f.write(json.dumps({k:list(v) for k,v in sub_dep_dict.items()}))
+        with open('DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_contents.json','w') as f:
+            f.write(json.dumps({k:list(v) for k,v in sub_dep_contents.items()}))
+        with open(unsub_loc,'w') as f:
+            f.write(json.dumps({k:list(v) for k,v in unsub_dep_dict.items()}))
+        # plot results
+        sub_dep_dict = substTreesToDepGraph(rooted_sub_trees)[0]
+        if plot:
+            plotDependencyGraphs(nx.DiGraph(unsub_dep_dict),
+                                 nx.DiGraph(sub_dep_dict), outfile, figsize=(8,6))
+    theorem_count += 1
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/combined_dep_graphs_2.png]]
+
+
+#+BEGIN_SRC python :session :results file
+
+library_name = "Arith"
+lib_location = "./DependencyGraphs/UnsubSub"
+outfile = "Images/comparison_degree_dist.png"
+
+num_theorems = int(len(list(filter(lambda x: 'theorems' not in x and 'contents' not in x,
+                                 filter(lambda y: library_name in y,
+                                        os.listdir(lib_location)))))/2)
+#fig, axs = plt.subplots(figsize=(6,6))
+fig, axs = plt.subplots(num_theorems, 2, sharex=True, sharey=True, figsize=(6,8))
+
+for i in range(num_theorems):
+    unsub_loc = lib_location+'/'+library_name+'_unsub_'+str(i)+'.json'
+    sub_loc = lib_location+'/'+library_name+'_sub_'+str(i)+'.json'
+    with open(unsub_loc,'r') as f:
+        unsub_graph = nx.DiGraph({k:set(v) for k,v in json.load(f).items()})
+    with open(sub_loc,'r') as f:
+        sub_graph = nx.DiGraph({k:set(v) for k,v in json.load(f).items()})
+    unsub_ax, sub_ax = axs[i][0], axs[i][1]
+    unsub_hist, sub_hist = nx.degree_histogram(unsub_graph), nx.degree_histogram(sub_graph)
+    unsub_ax.plot(range(len(unsub_hist)), unsub_hist)
+    sub_ax.plot(range(len(sub_hist)), sub_hist)
+    if i == 0:
+        unsub_ax.set_title('Unsubstituted theorems')
+        sub_ax.set_title('Substituted theorems')
+
+fig.tight_layout()
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/comparison_degree_dist.png]]
