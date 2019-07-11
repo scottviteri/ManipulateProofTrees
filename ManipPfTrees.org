@@ -224,8 +224,8 @@ plotGraph(g, './Images/'+theorem_name+'_DAG.png', label=True)
 #+BEGIN_SRC python :session :results file
 theorem_name = 'sqrt2_not_rational'
 outfile = './Images/'+theorem_name+'_DAG.png'
-sqrt2_dag = toplistToDAG(sqrt2_tree)
-plotGraph(nx.DiGraph(sqrt2_dag), outfile, label=False, figsize=(8,8))
+#sqrt2_dag = toplistToDAG(sqrt2_tree)
+#plotGraph(nx.DiGraph(sqrt2_dag), outfile, label=False, figsize=(8,8))
 './Images/'+theorem_name+'_DAG.png'
 #+END_SRC
 
@@ -337,7 +337,6 @@ print(genComparableGraph(ev_4_dag))
 #+END_SRC
 
 #+RESULTS:
-[[file:{'ev_SS': set(), '2': set(), 'App1': {'App2', 'ev_SS', '2'}, 'O': set(), 'ev_0': set(), 'App2': {'ev_SS', 'O', 'ev_0'}}]]
 [[file:[5, 1, 4]]]
 [[file:['App2', 'App1', 'App3', '2', 'ev_8.ev_2', '4', '6', 'ev_SS']]]
 [[file:[]]]
