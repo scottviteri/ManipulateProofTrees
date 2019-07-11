@@ -1,0 +1,24 @@
+#
+# GMT Thu Jul 11 19:28:01 2019
+# 
+sqrt2_not_rational.sqrt2_not_rational Coq.Arith.Wf_nat.lt_wf Coq.Init.Wf.well_founded_ind Coq.Init.Logic.not_eq_sym Coq.Init.Logic.eq_ind sqrt2_not_rational.new_equality sqrt2_not_rational.comparison2 Coq.Init.Logic.not Coq.Init.Nat.sub Coq.Arith.Minus.le_plus_minus Coq.Arith.Lt.neq_0_lt sqrt2_not_rational.lt_neq Coq.Init.Peano.gt Coq.Init.Nat.add Coq.Init.Peano.lt sqrt2_not_rational.comparison4 Coq.Init.Nat.mul Coq.Arith.Gt.gt_le_S Coq.Arith.PeanoNat.Nat.lt_le_incl Coq.Init.Peano.plus_n_O Coq.Arith.Plus.plus_lt_reg_l
+Coq.Init.Wf.well_founded_ind
+Coq.Init.Peano.lt
+Coq.Arith.Wf_nat.lt_wf
+Coq.Init.Logic.not
+Coq.Init.Nat.mul
+Coq.Init.Nat.sub
+sqrt2_not_rational.comparison4
+Coq.Init.Logic.not_eq_sym
+sqrt2_not_rational.lt_neq
+Coq.Arith.Plus.plus_lt_reg_l
+Coq.Init.Logic.eq_ind
+Coq.Init.Nat.add
+Coq.Arith.Gt.gt_le_S
+sqrt2_not_rational.comparison2
+Coq.Init.Peano.gt
+Coq.Arith.Minus.le_plus_minus
+Coq.Arith.PeanoNat.Nat.lt_le_incl
+Coq.Init.Peano.plus_n_O
+sqrt2_not_rational.new_equality
+Coq.Arith.Lt.neq_0_lt
