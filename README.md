@@ -31,11 +31,19 @@ The saved graph outputs of computation in ManipPfTrees.org
 
 Compress and analyze proof objects as a deduplified directed acyclic graph.
 
+## ./ProofDAGs
+
+Output of ManipPfTrees
+
 ## ./GenerateDependencyGraphs.org
 
 Also generates a DAG from proof objects, but uses an intermediate tree representation where lemmas are substituted into main theorems. Less computationally efficient, but more conceptually clear.
 
 Also can generate graphs of what theorems reference what other theorems in the Coq standard library.
+
+## ./DependencyGraphs
+
+Output of GenerateDependencyGraphs
 
 ## ./utils.py
 

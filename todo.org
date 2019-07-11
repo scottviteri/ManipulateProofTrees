@@ -1,6 +1,6 @@
 
-* TODO Decide if want to merge library and library proof folders
-
+* DONE Decide if want to merge library and library proof folders
+  I do and I did
 * DONE Separate out functionality for other kind of dag,
   Where should I put all of the other functions?
   The first kind of dag should be called dependency graphs
@@ -13,3 +13,6 @@
 * TODO Create DAG for library
 
 * TODO Find compressions in propositional logic
+* DONE Load different levels of theorem graphs (with rand and without) into a folder
+* TODO Do some Ising stuff on it
+* TODO Speed up random graph generation

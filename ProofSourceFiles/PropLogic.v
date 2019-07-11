@@ -1,4 +1,4 @@
-Add LoadPath "~/LocalSoftware/CoqASTSource/plugin/src/".
+Add LoadPath "~/LocalSoftware/CoqAST/plugin/src/".
 Require Import PrintAST.ASTPlugin.
 
 Theorem t1 : forall (p q : Prop), p -> q -> p /\ q.
@@ -20,6 +20,32 @@ PrintAST (S 0).
 Print conj.
 PrintAST conj.
 Print or.
+
+Theorem t_assoc : forall (p q r : Prop), (p /\ q) /\ r -> p /\ (q /\ r).
+Proof.
+  intros p q r hpqr.
+  destruct hpqr as [[hp hq] hr].
+  apply (conj hp (conj hq hr)).
+Qed.
+Print t_assoc.
+PrintAST t_assoc.
+
+Theorem t_comm : forall (p q : Prop), p /\ q -> q /\ p.
+Proof.
+  intros p q hpq.
+  destruct hpq as [hp hq].
+  apply (conj hq hp).
+Qed.
+
+Print t_comm.
+
+Theorem t_comms : forall (p q r : Prop), ((p /\ q) /\ r) /\ (p /\ (q /\ r)) -> p.
+Proof.
+  intuition.
+Qed.
+
+Print t_comms.
+
 
 Theorem t2 : forall (p q r : Prop), (p /\ q) /\ (p -> r) -> r.
 Proof.

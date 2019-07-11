@@ -1,1 +1,0 @@
-(Definition ev_4_alt.ev_4_alt (App ev_4_alt.add_even_even (App S (App S O)) (App S (App S O)) ev_4_alt.ev_2 ev_4_alt.ev_2)) 

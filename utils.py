@@ -100,14 +100,16 @@ def parenStringToLists(paren_string, debug=False):
     return [theorem_rev[0]] + theorem_rev[1:][::-1]
 
 def theoremNameToLists(theorem_name, depth=2, debug=False):
-    theorem_folder = './ProofTrees/Individual/'+theorem_name
+    theorem_folder = './ProofTrees/'+theorem_name
     if not os.path.exists(theorem_folder):
         print('Generating proof objects for', theorem_name)
         subprocess.call(["./coq_proof_to_trees.sh", theorem_name])
     with open(theorem_folder + '/d'+str(depth)+'.txt', 'r') as f:
         paren_string = f.read()
-    assert(paren_string != '')
-    return parenStringToLists('(Top ' + paren_string.strip() + ')', debug=debug)
+    #assert(paren_string != '')
+    if (paren_string != ''):
+        return parenStringToLists('(Top ' + paren_string.strip() + ')', debug=debug)
+    return []
 
 assert(parenStringToLists('(a b (c d e))') in [['a','b',['c','d','e']], ['a',['c','d','e'],'b']])
 
@@ -116,7 +118,8 @@ ev_4_alt_tree = theoremNameToLists('ev_4_alt')
 ev_8_tree = theoremNameToLists('ev_8')
 ev_8_alt_tree = theoremNameToLists('ev_8_alt')
 sqrt2_tree = theoremNameToLists('sqrt2_not_rational')
-sqrt2_d3_tree = theoremNameToLists('sqrt2_not_rational', depth=3)
+#sqrt2_d3_tree = theoremNameToLists('sqrt2_not_rational', depth=3)
+#bday_tree = theoremNameToLists('birthday_paradox')
 
 #printTree(ev_4_tree)
 #printTree(ev_4_alt_tree)

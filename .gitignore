@@ -1,3 +1,6 @@
 flycheck_*
 Images/*
 __pycache__/
+DependencyGraphs/*
+ProofDAGs/*
+ProofTrees/*

@@ -138,24 +138,19 @@ def plotDependencyGraph(graph, outfile, label=False, figsize=(4,4)):
 def theoremNameToOutfile(theorem_name):
     return 'Images/' + theorem_name + '_dependencies.png'
 
-def exportIndivResults(theorem_name, theorem, graph, depth):
-    list_outfolder = "./ProofList/Individual/" + theorem_name
-    graph_outfolder = "./DependencyGraphs/Individual/" + theorem_name
-    if not os.path.exists(list_outfolder):
-        os.mkdir(list_outfolder)
+def exportIndivResults(theorem_name, graph, depth):
+    graph_outfolder = "./DependencyGraphs/" + theorem_name
     if not os.path.exists(graph_outfolder):
         os.mkdir(graph_outfolder)
-    with open(list_outfolder + "/d"+str(depth)+".txt",'w') as f:
-        f.write(json.dumps(theorem))
     nx.write_adjlist(graph, graph_outfolder + "/d"+str(depth)+".txt")
 
-def plotDepGraphFromTheoremName(theorem_name, depth=2, label=False, figsize=(4,4), export=False):
+def plotDepGraphFromTheoremName(theorem_name, depth=2, label=False, figsize=(4,4), export=True):
     outfile = theoremNameToOutfile(theorem_name)
     if not os.path.exists(outfile):
         theorem = theoremNameToLists(theorem_name, depth=depth)
         graph = theoremToDependencyGraph(theorem)
         if export:
-            exportIndivResults(theorem_name, theorem, graph, depth)
+            exportIndivResults(theorem_name, graph, depth)
         plotDependencyGraph(graph, outfile, label=label, figsize=figsize)
 
 
@@ -165,25 +160,21 @@ def plotDepGraphFromTheoremName(theorem_name, depth=2, label=False, figsize=(4,4
 
 #+BEGIN_SRC python :session :results output silent
 
-def libTheoremNameToLists(theorem_name, library_name, debug=False):
-    theorem_location = './ProofTrees/StdLib/'+library_name
-    with open(theorem_location + '/'+theorem_name+'.txt', 'r') as f:
-        paren_string = f.read()
-    if paren_string:
-        return parenStringToLists('(Top ' + paren_string.strip() + ')', debug=debug)
-    else:
-        return []
+def libNameToTheoremNames(library_name):
+    with open('ProofTrees/'+library_name+'.txt','r') as f:
+        names = f.readlines()
+    return list(map(lambda x:x.strip(), names))
 
-def nameToStdLibTheorems(library_name, debug=False, limit=None):
-    lib_location = "./ProofTrees/StdLib/" + library_name
-    if not os.path.exists(lib_location):
-        subprocess.run(["./lib_to_trees.sh", library_name])
-    theorem_names = list(map(lambda x: x[:-4], os.listdir(lib_location)))
+def nameToStdLibTheorems(library_name, debug=False, depth=2, limit=None):
+    if not os.path.exists('./ProofTrees/'+library_name+'.txt'):
+        subprocess.call(['./lib_to_trees.sh', library_name, str(depth)])
+    theorem_names = libNameToTheoremNames(library_name)
     if limit:
         theorem_names = theorem_names[:limit]
     theorems = {}
     for theorem_name in theorem_names:
-        unsub_theorem_def = libTheoremNameToLists(theorem_name, library_name, debug=debug)
+        print(theorem_name)
+        unsub_theorem_def = theoremNameToLists(theorem_name, depth=depth, debug=debug)
         if unsub_theorem_def != []:
             theorems[theorem_name] = unsub_theorem_def
     return theorems
@@ -192,10 +183,7 @@ def libNameToOutfile(library_name):
     return 'Images/' + library_name + '_library_dependencies.png'
 
 def exportLibResults(library_name, theorems, graph, depth):
-    list_outfolder = "./ProofList/StdLib/" + library_name
-    graph_outfolder = "./DependencyGraphs/StdLib/" + library_name
-    if not os.path.exists(list_outfolder):
-        os.mkdir(list_outfolder)
+    graph_outfolder = "./DependencyGraphs/" + library_name
     if not os.path.exists(graph_outfolder):
         os.mkdir(graph_outfolder)
     for theorem_name, theorem_def in theorems.items():
@@ -204,14 +192,15 @@ def exportLibResults(library_name, theorems, graph, depth):
     nx.write_adjlist(graph, graph_outfolder + '/' + library_name + '.txt')
 
 
-def plotDepGraphFromLibraryName(library_name, depth=2, label=False, figsize = (8,6), export=False, debug=False):
+def plotDepGraphFromLibraryName(library_name, depth=2, label=False, figsize = (8,6), export=True, debug=False):
     assert(library_name in os.listdir('/home/scottviteri/LocalSoftware/coq/theories'))
     outfile = libNameToOutfile(library_name)
     if not os.path.exists(outfile):
         theorems = nameToStdLibTheorems(library_name, debug=debug)
         graph = theoremListToDependencyGraph(theorems.values())
         if export:
-            exportLibResults(library_name, theorems, graph, depth)
+            for theorem_name in theorems:
+                exportIndivResults(theorem_name, graph, depth)
         plotDependencyGraph(graph, outfile, label=label, figsize=figsize)
 
 #+END_SRC
@@ -553,18 +542,15 @@ outfile
 *** Tree to DAG for library theorems
 
 #+BEGIN_SRC python :session :results output silent
-def nameToStdLibTheoremPairs(library_name, debug=False):
-    lib_location = "./ProofTrees/StdLib/" + library_name
-    if not os.path.exists(lib_location):
-        subprocess.run(["./lib_to_trees.sh", library_name])
-    theorem_names = list(map(lambda x: x[:-4], os.listdir(lib_location)))
+def nameToStdLibTheoremPairs(library_name, depth=2, debug=False):
+    theorem_names = libNameToTheoremNames(library_name)
     count = 0
     should_compute = yield
     for theorem_name in theorem_names:
         #print("theorem_name:", theorem_name)
         #print("should_compute:", should_compute)
         if should_compute:
-            unsub_theorem_def = libTheoremNameToLists(theorem_name, library_name, debug=debug)
+            unsub_theorem_def = theoremNameToLists(theorem_name, debug=debug)
             if unsub_theorem_def != []:
                 sub_theorem_def = replaceDefinitions(unsub_theorem_def)
                 count += 1
@@ -589,9 +575,9 @@ unsub_dep_dict = {}
 rooted_sub_trees = ['Top']
 while theorem_count < max_num_theorems:
     outfile = 'Images/combined_dep_graphs_'+str(theorem_count)+'.png'
-    sub_dict_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'.json'
-    sub_theorems_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_theorems.json'
-    unsub_loc = 'DependencyGraphs/UnsubSub/'+library_name+'_unsub_'+str(theorem_count)+'.json'
+    sub_dict_loc = 'DependencyGraphs/'+library_name+'_sub_'+str(theorem_count)+'.json'
+    sub_theorems_loc = 'DependencyGraphs/'+library_name+'_sub_'+str(theorem_count)+'_theorems.json'
+    unsub_loc = 'DependencyGraphs/'+library_name+'_unsub_'+str(theorem_count)+'.json'
     if os.path.exists(sub_theorems_loc) and os.path.exists(unsub_loc) and os.path.exists(sub_dict_loc):
         rooted_sub_trees = json.load(open(sub_theorems_loc))
         unsub_dep_dict = {k:set(v) for k,v in json.load(open(unsub_loc)).items()}
@@ -609,7 +595,7 @@ while theorem_count < max_num_theorems:
         print(sub_dep_dict)
         with open(sub_dict_loc,'w') as f:
             f.write(json.dumps({k:list(v) for k,v in sub_dep_dict.items()}))
-        with open('DependencyGraphs/UnsubSub/'+library_name+'_sub_'+str(theorem_count)+'_contents.json','w') as f:
+        with open('DependencyGraphs/'+library_name+'_sub_'+str(theorem_count)+'_contents.json','w') as f:
             f.write(json.dumps({k:list(v) for k,v in sub_dep_contents.items()}))
         with open(unsub_loc,'w') as f:
             f.write(json.dumps({k:list(v) for k,v in unsub_dep_dict.items()}))
@@ -630,7 +616,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 
 library_name = "Arith"
-lib_location = "./DependencyGraphs/UnsubSub"
+lib_location = "./DependencyGraphs/"
 outfile = "Images/comparison_degree_dist.png"
 
 num_theorems = int(len(list(filter(lambda x: 'theorems' not in x and 'contents' not in x,

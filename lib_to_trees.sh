@@ -2,17 +2,20 @@
 
 PROOFS="./ProofSourceFiles"
 LIB=$1
-OUTDIR="./ProofTrees/StdLib/${LIB}"
+DEPTH=$2
+OUTDIR="./ProofTrees/"
 BASE="/home/scottviteri/LocalSoftware/coq/theories"
+touch ${OUTDIR}/${LIB}.txt
 for X in ${BASE}/${LIB}/*.v;
 do
  for THEOREM in $(cat $X | grep "^Theorem" | awk '{print $2}');
  do
   cat ${PROOFS}/ExportProofBase.v > ${PROOFS}/ExportProof.v
   echo "Require Import ${LIB}." >> ${PROOFS}/ExportProof.v
-  echo "PrintAST ${THEOREM} with depth 2." >> ${PROOFS}/ExportProof.v
-  mkdir -p $OUTDIR
-  coqc ${PROOFS}/ExportProof.v > ${OUTDIR}/${THEOREM}.txt
+  echo "PrintAST ${THEOREM} with depth ${DEPTH}." >> ${PROOFS}/ExportProof.v
+  mkdir -p $OUTDIR/${THEOREM}
+  coqc ${PROOFS}/ExportProof.v > ${OUTDIR}/${THEOREM}/d${DEPTH}.txt
+  echo ${THEOREM} >> ${OUTDIR}/${LIB}.txt
  done
 done
 

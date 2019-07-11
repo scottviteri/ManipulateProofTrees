@@ -1,4 +1,4 @@
-Add LoadPath "~/LocalSoftware/CoqASTSource/plugin/src/".
+Add LoadPath "~/LocalSoftware/CoqAST/plugin/src/".
 Require Import PrintAST.ASTPlugin.
 
 Variables P Q : nat -> Prop.
