@@ -23,10 +23,6 @@ Export is handled by ./coq_proof_to_trees.sh, which depends on my local version 
 
 The saved image outputs of computation in ManipPfTrees.org
 
-## ./Graphs
-
-The saved graph outputs of computation in ManipPfTrees.org
-
 ## ./ManipPfTrees.org
 
 Compress and analyze proof objects as a deduplified directed acyclic graph.
@@ -43,7 +39,7 @@ Also can generate graphs of what theorems reference what other theorems in the C
 
 ## ./DependencyGraphs
 
-Output of GenerateDependencyGraphs
+Output of GenerateDependencyGraphs.org
 
 ## ./utils.py
 
