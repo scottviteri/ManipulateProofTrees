@@ -256,7 +256,7 @@ ev_8_dag = toplistToDAG(ev_8_tree)
 def anyIncomingEdges(node, graph):
     return any([node in v for v in graph.values()])
 
-def randomTopSort(theorem_dag):
+def randomTopSortSlow(theorem_dag):
     dag = copy.deepcopy(theorem_dag)
     L = []
     S = {k for k in dag if not anyIncomingEdges(k, dag)}
@@ -269,6 +269,23 @@ def randomTopSort(theorem_dag):
             if not anyIncomingEdges(m, dag):
                 S.add(m)
     return L
+
+def randomTopSort(theorem_dag):
+    dag = copy.deepcopy(theorem_dag)
+    L = []
+    #maybe precompute indegrees, and subtract
+    nodes_with_indegree = set().union(*theorem_dag.values())
+    S = dag.keys() - nodes_with_indegree
+    while S:
+        n = S.pop()
+        L.append(n)
+        neighbors = dag[n].copy()
+        for m in random.sample(neighbors, len(neighbors)):
+            dag[n].remove(m)
+            if not anyIncomingEdges(m, dag):
+                S.add(m)
+    return L
+
 
 def getDownStream(node, graph):
     out = []
@@ -337,6 +354,8 @@ print(genComparableGraph(ev_4_dag))
 #+END_SRC
 
 #+RESULTS:
+[[file:<bound method Random.shuffle of <random.Random object at 0x12dd7c8>>]]
+[[file:[3, 6, 0, 4, 5, 2, 7, 8, 1, 9]]]
 [[file:[5, 1, 4]]]
 [[file:['App2', 'App1', 'App3', '2', 'ev_8.ev_2', '4', '6', 'ev_SS']]]
 [[file:[]]]
@@ -544,7 +563,7 @@ exportDAGs(theorem_name, max_depth=3, num_replicas=5)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'birthday_paradox'
-exportDAGs(theorem_name, max_depth=2, num_replicas=1)
+exportDAGs(theorem_name, max_depth=4, num_replicas=5)
 #+END_SRC
 
 
