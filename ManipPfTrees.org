@@ -48,14 +48,13 @@ cic_constructors = ['App', 'Definition', 'Axiom', 'Lambda',
                     'Max','Universe','UnivInstance','Sort','Prop','Type',
                     'Functions','Proj','Name','Anonymous']
 
-cic_regex = re.compile("^"+"|".join(cic_constructors))
-
 def constructorMatch(test, constructor):
     return constructor == test[:len(constructor)]
 
 assert(constructorMatch('App1','App'))
 assert(not constructorMatch('App','App1'))
 
+cic_regex = re.compile("^"+"|".join(cic_constructors))
 def isConstructor(test):
     return bool(cic_regex.match(test))
 
@@ -66,12 +65,11 @@ assert(isConstructor('Cast'))
 def isShallowSubgraph(dag1, dag2):
     constructor, children = next(iter(dag1.items()))
     for k2 in dag2:
-        #if isConstructor(k2) and constructorMatch(k2, constructor) and children == dag2[k2]:
         if constructorMatch(k2, constructor) and children == dag2[k2]:
             return k2
     return False
 
-assert(isShallowSubgraph({'App':{'1','2'}}, {'App1':{'1','2'}}) == 'App1')
+assert(isShallowSubgraph({'App': {'1','2'}}, {'App1':{'1','2'}}) == 'App1')
 assert(not isShallowSubgraph({'App':{'1','2'}}, {'App1':{'1','3'}}))
 
 #+END_SRC
@@ -79,7 +77,7 @@ assert(not isShallowSubgraph({'App':{'1','2'}}, {'App1':{'1','3'}}))
 
 #+BEGIN_SRC python :session :results output
 
-def listToDAGHelper(tree, out_dag = {}, cic_count = {constr: 0 for constr in cic_constructors}):
+def listToDAGHelper(tree, out_dag, cic_count):
     if not isinstance(tree, list):
         out_dag[tree] = set()
         return out_dag, tree, cic_count
@@ -270,19 +268,26 @@ def randomTopSortSlow(theorem_dag):
                 S.add(m)
     return L
 
+def getIndegreeDist(theorem_dag):
+    indegrees = {k:0 for k in theorem_dag}
+    for k in theorem_dag:
+        for v in theorem_dag[k]:
+            indegrees[v] += 1
+    return indegrees
+
 def randomTopSort(theorem_dag):
     dag = copy.deepcopy(theorem_dag)
     L = []
-    #maybe precompute indegrees, and subtract
-    nodes_with_indegree = set().union(*theorem_dag.values())
-    S = dag.keys() - nodes_with_indegree
+    indegree_dict = getIndegreeDist(dag)
+    S = {k for k in indegree_dict if indegree_dict[k] == 0}
     while S:
         n = S.pop()
         L.append(n)
         neighbors = dag[n].copy()
         for m in random.sample(neighbors, len(neighbors)):
             dag[n].remove(m)
-            if not anyIncomingEdges(m, dag):
+            indegree_dict[m] -= 1
+            if indegree_dict[m] == 0: #anyIncomingEdges(m, dag):
                 S.add(m)
     return L
 
@@ -354,7 +359,7 @@ print(genComparableGraph(ev_4_dag))
 #+END_SRC
 
 #+RESULTS:
-[[file:<bound method Random.shuffle of <random.Random object at 0x12dd7c8>>]]
+[[file:['App1', 'App2', '2', 'ev_0', 'O', 'ev_SS']]]
 [[file:[3, 6, 0, 4, 5, 2, 7, 8, 1, 9]]]
 [[file:[5, 1, 4]]]
 [[file:['App2', 'App1', 'App3', '2', 'ev_8.ev_2', '4', '6', 'ev_SS']]]
@@ -508,7 +513,7 @@ def genComparableGraphs(theorem_dag, num_graphs, test=False):
 
 
 
-def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, depth=2, plot=True):
+def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, depth=2, plot=False):
     outfolder = './ProofDAGs/'+theorem_name+'/'
     if not os.path.exists(outfolder):
         os.mkdir(outfolder)
@@ -523,7 +528,7 @@ def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, depth=2, plot
         if plot:
             plotGraph(nx.DiGraph(g), './Images/'+theorem_name+'_gen_DAG_'+str(i)+'.png')
 
-def exportDAGs(theorem_name, max_depth, num_replicas, plot=True):
+def exportDAGs(theorem_name, max_depth, num_replicas, plot=False):
     for depth in range(1, max_depth+1):
         tree = theoremNameToLists(theorem_name, depth)
         dag = toplistToDAG(tree, theorem_name, depth=depth)
@@ -563,6 +568,50 @@ exportDAGs(theorem_name, max_depth=3, num_replicas=5)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'birthday_paradox'
+exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+#+END_SRC
+
+**** bertrand_ballot
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'bertrand_ballot'
+exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+#+END_SRC
+
+**** FTA
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'FTA'
+exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+#+END_SRC
+
+
+**** Pythagoras
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'pythagoras'
+exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+#+END_SRC
+
+**** Quadratic_reciprocity
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Quadratic_reciprocity'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+#+END_SRC
+
+**** Euler_exp_totient
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Euler_exp_totient'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+#+END_SRC
+
+
+**** FTC (Fundamental Theorem of Integral Calculus)
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'FTC'
 exportDAGs(theorem_name, max_depth=4, num_replicas=5)
 #+END_SRC
 

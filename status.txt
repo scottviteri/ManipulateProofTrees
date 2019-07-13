@@ -1,16 +1,51 @@
 1. Irrationality of sqrt2 (QArithSternBrocot.sqrt2)
- Proofs/sqrt2 
+ ProofsSourceFiles/sqrt2_not_rational.v
  Done
 
 2. Fundamental Theorem of Algebra 
  Herman Geuvers et al. (in C-CoRN/fta/FTA)
- Proofs/FTA
+ ProofSourceFiles/FTA.v
  Done
+
+3. The Denumerability of the Rational Numbers
+ Milad Niqui (in contribs/QArithSternBrocot/Q_denumerable) 
+  Old dependencies
+ Daniel Schepler (in contribs/ZornsLemma/CountableTypes)
+  Yet to try
+
+4. Pythagorean Theorem
+ Gabriel Braun (GeoCoq in Chapter 15)
+ ProofSourceFiles/pythagoras.v
+ Done
+
+
+6. Godel's Incompleteness Theorem
+ Building locally
+ Out of date
+
+
+7. Law of Quadratic Reciprocity
+ Nathanaël Courant: https://github.com/Ekdohibs/coq-proofs/tree/master/reciprocity
+ ProofSourceFiles/Quadratic_reciprocity.v
+ Done 
 
 10. Euler's Generalization of Fermat's Little Theorem
  Laurent Théry (in mathcomp/solvable/cyclic.v)
- Proofs/Euler_exp_totient
+ ProofSourceFiles/Euler_exp_totient.v
  Done
+
+13. Polyhedron Formula
+ Dead link
+
+14. Euler’s Summation of 1 + (1/2)^2 + (1/3)^2 + ….
+ Jean-Marie Madiot (in Coqtail/Reals/Rzeta2): 
+ Have to run whole github for coqtail
+
+15. Fundamental Theorem of Integral Calculus
+ Luís Cruz-Filipe (in C-CoRN/ftc/FTC)  
+ ProofSourceFiles/FTC.v
+ <-- all extractions same here for some reason
+
 
 31. Ramsey's Theorem
  The Coq development team (Sets/Image) 

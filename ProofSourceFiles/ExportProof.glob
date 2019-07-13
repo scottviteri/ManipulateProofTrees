@@ -1,4 +1,5 @@
-DIGEST 76f8da5ee2826241c00b23361c7d1697
+DIGEST b73954758849187361b8c8c5da62fbf7
 FExportProof
 R101:118 PrintAST.ASTPlugin <> <> lib
-R137:142 Coq.ZArith.ZArith <> <> lib
+R137:160 mathcomp.solvable.cyclic <> <> lib
+R172:188 mathcomp.solvable.cyclic <> Euler_exp_totient thm
