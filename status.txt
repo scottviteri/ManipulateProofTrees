@@ -39,30 +39,50 @@
 
 14. Euler’s Summation of 1 + (1/2)^2 + (1/3)^2 + ….
  Jean-Marie Madiot (in Coqtail/Reals/Rzeta2): 
- Have to run whole github for coqtail
+ Have to get coqtail
 
 15. Fundamental Theorem of Integral Calculus
  Luís Cruz-Filipe (in C-CoRN/ftc/FTC)  
  ProofSourceFiles/FTC.v
  <-- all extractions same here for some reason
 
+17. DeMoivre’s Theorem
+ Coqtail team (in Coqtail/Complex/Cexp): 
+ Have to get coqtail
+
+18. Liouville’s Theorem and the Construction of Trancendental Numbers
+ Valentin Blot (CoRN/Liouville/Liouville_theorem)
+ ProofSourceFiles/Liouville_theorem.v
+ Done
+
+19. Four Squares Theorem
+ Guillaume Allais, Jean-Marie Madiot (Coqtail/Arith/Lagrange_four_square)
+ Install coqtail
+
+22. The Non-Denumerability of the Continuum
+ C-CoRN team (in C-CoRN/reals/RealCount):
+ ProofSourceFiles/reals_not_countable.v
+ Done
+
+26. Leibniz’s Series for Pi
+ Guillaume Allais (in standard library, Reals/Ratan)
+ ProofSourceFiles/Alt_PI_eq.v
+ Done
 
 31. Ramsey's Theorem
  The Coq development team (Sets/Image) 
- Proofs/Pigeonhole
+ ProofSourceFiles/Pigeonhole.v
  Done
 
 32. Four Color 
  Found source but cannot install due to missing dependencies
- Cannot currently find out what those dependencies are
+ I think this repo is probably not going to be able to work with a recent coq version
 
 33. Fermat's Last Theorem
  Found user proof for n=4 in opam, but cannot install
 
 35. Taylor's Theorem
- UserContributions/Nijmegen/CoRN
- Proofs/Taylor
+ Luís Cruz-Filipe (in C-CoRN/ftc/Taylor)
+ ProofSourceFiles/Taylor.v
  Done
 
-36. Brouwer Fixed Point Theorem
- Does not exist in Coq

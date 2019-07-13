@@ -1,5 +1,5 @@
-DIGEST b73954758849187361b8c8c5da62fbf7
+DIGEST 6c1bd6bc9e6a39fb618bdc917791cd9c
 FExportProof
 R101:118 PrintAST.ASTPlugin <> <> lib
-R137:160 mathcomp.solvable.cyclic <> <> lib
-R172:188 mathcomp.solvable.cyclic <> Euler_exp_totient thm
+R137:146 Coq.Sets.Image <> <> lib
+R158:167 Coq.Sets.Image <> Pigeonhole thm

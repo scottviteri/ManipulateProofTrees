@@ -597,7 +597,7 @@ exportDAGs(theorem_name, max_depth=4, num_replicas=5)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Quadratic_reciprocity'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5)
 #+END_SRC
 
 **** Euler_exp_totient
@@ -607,13 +607,50 @@ theorem_name = 'Euler_exp_totient'
 exportDAGs(theorem_name, max_depth=3, num_replicas=5)
 #+END_SRC
 
-
 **** FTC (Fundamental Theorem of Integral Calculus)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'FTC'
 exportDAGs(theorem_name, max_depth=4, num_replicas=5)
 #+END_SRC
+
+**** Liouville's Theorem and the Construction of Trancendental Numbers
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Liouville_theorem'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+#+END_SRC
+
+**** The Non-Denumerability of the Continuum
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'reals_not_countable'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+#+END_SRC
+
+**** Leibniz's Series for Pi
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Alt_PI_eq'
+exportDAGs(theorem_name, max_depth=2, num_replicas=5)
+#+END_SRC
+
+**** Pigeonhole
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Pigeonhole'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+#+END_SRC
+
+**** Taylor's Theorem
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Taylor'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+#+END_SRC
+
+
+
 
 
 

@@ -101,7 +101,7 @@ def parenStringToLists(paren_string, debug=False):
 
 def theoremNameToLists(theorem_name, depth=2, debug=False):
     theorem_folder = './ProofTrees/'+theorem_name
-    if not os.path.exists(theorem_folder):
+    if not os.path.exists(theorem_folder + '/d'+str(depth)+'.txt'):
         print('Generating proof objects for', theorem_name)
         subprocess.call(["./coq_proof_to_trees.sh", theorem_name])
     with open(theorem_folder + '/d'+str(depth)+'.txt', 'r') as f:
