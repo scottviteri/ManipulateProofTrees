@@ -165,7 +165,7 @@ def libNameToTheoremNames(library_name):
         names = f.readlines()
     return list(map(lambda x:x.strip(), names))
 
-def nameToStdLibTheorems(library_name, debug=False, depth=2, limit=None):
+def libNameToTheoremDict(library_name, debug=False, depth=2, limit=None):
     if not os.path.exists('./ProofTrees/'+library_name+'.txt'):
         subprocess.call(['./lib_to_trees.sh', library_name, str(depth)])
     theorem_names = libNameToTheoremNames(library_name)
@@ -174,9 +174,9 @@ def nameToStdLibTheorems(library_name, debug=False, depth=2, limit=None):
     theorems = {}
     for theorem_name in theorem_names:
         print(theorem_name)
-        unsub_theorem_def = theoremNameToLists(theorem_name, depth=depth, debug=debug)
-        if unsub_theorem_def != []:
-            theorems[theorem_name] = unsub_theorem_def
+        theorem_tree = theoremNameToLists(theorem_name, depth=depth, debug=debug)
+        if theorem_tree != []:
+            theorems[theorem_name] = theorem_tree
     return theorems
 
 def libNameToOutfile(library_name):
@@ -196,7 +196,7 @@ def plotDepGraphFromLibraryName(library_name, depth=2, label=False, figsize = (8
     assert(library_name in os.listdir('/home/scottviteri/LocalSoftware/coq/theories'))
     outfile = libNameToOutfile(library_name)
     if not os.path.exists(outfile):
-        theorems = nameToStdLibTheorems(library_name, debug=debug)
+        theorems = libNameToTheoremDict(library_name, debug=debug)
         graph = theoremListToDependencyGraph(theorems.values())
         if export:
             for theorem_name in theorems:
@@ -542,7 +542,7 @@ outfile
 *** Tree to DAG for library theorems
 
 #+BEGIN_SRC python :session :results output silent
-def nameToStdLibTheoremPairs(library_name, depth=2, debug=False):
+def libNameToTheoremPairs(library_name, depth=2, debug=False):
     theorem_names = libNameToTheoremNames(library_name)
     count = 0
     should_compute = yield
@@ -566,7 +566,7 @@ def nameToStdLibTheoremPairs(library_name, depth=2, debug=False):
 
 library_name = 'Arith'
 max_num_theorems = 3
-theorem_generator = nameToStdLibTheoremPairs(library_name)
+theorem_generator = libNameToTheoremPairs(library_name)
 next(theorem_generator)
 plot = True
 

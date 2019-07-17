@@ -11,8 +11,21 @@
   Want tree manip utilities, plot num nodes at depth
 
 * TODO Create DAG for library
+  Partially done -- have DAGs for library, but unify into one.
+  Find where exporting library
+   Actually in GenerateDependencyGraphs
+   Exports to ProofTrees
+    Could create ProofTrees/Reals/
+
+  Plan:
+   Copy relevant code to ManipPfTrees.org
+   Once functional, move shared to utils
+   Then make utils explicit
 
 * TODO Find compressions in propositional logic
 * DONE Load different levels of theorem graphs (with rand and without) into a folder
 * TODO Do some Ising stuff on it
-* TODO Speed up random graph generation
+  Simon is doing this
+* DONE Speed up random graph generation
+* TODO Calculate Louvain modularity
+  Get diff between real and nulls

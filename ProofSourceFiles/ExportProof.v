@@ -2,5 +2,5 @@ Add LoadPath "~/LocalSoftware/CoqAST/plugin/src/".
 Add LoadPath "./ProofSourceFiles".
 Require Import PrintAST.ASTPlugin.
 
-Require Import CoRN.ftc.FTC.
-PrintAST FTC1 with depth 6.
+Require Import Arith.
+PrintAST well_founded_lt_compat with depth 3.

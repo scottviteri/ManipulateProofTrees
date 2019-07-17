@@ -166,6 +166,38 @@ assert(toplistToDAG(ev_4_tree)
 
 #+END_SRC
 
+*** Convert library to DAG
+
+#+BEGIN_SRC python :session :results output silent
+
+def libNameToTheoremNames(library_name, depth=1):
+    with open('ProofTrees/'+library_name+'_d'+str(depth)+'.txt','r') as f:
+        names = f.readlines()
+    return list(map(lambda x: x.strip(), names))
+
+def libNameToTheoremDict(library_name, debug=False, depth=2, limit=None):
+    if not os.path.exists('./ProofTrees/'+library_name+'_d'+str(depth)+'.txt'):
+        subprocess.call(['./lib_to_trees.sh', library_name, str(depth)])
+    theorem_names = libNameToTheoremNames(library_name, depth)
+    if limit:
+        theorem_names = theorem_names[:limit]
+    theorems = {}
+    for theorem_name in theorem_names:
+        print(theorem_name)
+        theorem_tree = theoremNameToLists(theorem_name, depth=depth, debug=debug)
+        if theorem_tree != []:
+            theorems[theorem_name] = theorem_tree
+    return theorems
+
+
+def libNameToDAG(library_name, depth=2, limit=None):
+    theorem_dict = libNameToTheoremDict(library_name, depth=depth, limit=limit)
+    theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
+    library_dag = toplistToDAG(theorem_tree)
+    return library_dag
+
+#+END_SRC
+
 *** Plot graph utils
 
 #+BEGIN_SRC python :session :results output silent
@@ -550,6 +582,11 @@ def exportDAGs(theorem_name, max_depth, num_replicas, plot=False):
         dag = toplistToDAG(tree, theorem_name, depth=depth)
         exportOrigAndReplicas(dag, theorem_name, num_replicas, depth=depth, plot=plot)
 
+def exportLibDAG(library_name, max_depth, num_replicas, limit=None, plot=False):
+    for depth in range(1, max_depth+1):
+        dag = libNameToDAG(library_name, depth=depth, limit=limit)
+        exportOrigAndReplicas(dag, library_name, num_replicas, depth=depth, plot=plot)
+
 #+END_SRC
 
 **** ev_4
@@ -602,11 +639,11 @@ exportDAGs(theorem_name, max_depth=2, num_replicas=5)
 #+END_SRC
 
 
-**** Pythagoras
+**** Pythagorean Theorem
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'pythagoras'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5)
 #+END_SRC
 
 **** Quadratic_reciprocity
@@ -666,8 +703,12 @@ theorem_name = 'Taylor'
 exportDAGs(theorem_name, max_depth=3, num_replicas=5)
 #+END_SRC
 
+**** Real Library
 
-
+#+BEGIN_SRC python :session :results output silent
+library_name = 'Arith'
+exportLibDAG(library_name, max_depth=3, num_replicas=5)
+#+END_SRC
 
 
 
@@ -801,9 +842,6 @@ degreeRandFileName(theorem_name, depth, in_or_out)
 
 #+RESULTS:
 [[file:./Images/gen_sqrt2_not_rational_d3_indegree_dist.png]]
-
-
-
 
 *** Count number of undirected loops
 
@@ -1102,7 +1140,6 @@ theoremNameToModularitiesOutfile(theorem_name)
 
 
 #+END_SRC
-
 
 *** DAG Motif Finding
 
@@ -1711,6 +1748,3 @@ outfile
 
 
 ** Find compressions in propositional logic
-
-TODO -- remove orig attempt at sub graph to simplify the directory structure
- remove Graph directory, instead just use ProofDAGs
