@@ -29,6 +29,8 @@ import random
 import community
 import re
 from utils import *
+from scipy.special import digmma
+from scipy.optimize import fsolve
 
 #+END_SRC
 
@@ -268,7 +270,22 @@ def randomTopSortSlow(theorem_dag):
                 S.add(m)
     return L
 
-def getIndegreeDist(theorem_dag):
+def checkDictClosed(d):
+    for k in d:
+        for v in d[k]:
+            if v not in d: return False
+    return True
+
+def getDictClosure(d):
+    out = []
+    for k in d:
+        for v in d[k]:
+            if v not in d:
+                out.append(v)
+    return out
+
+
+def getNodeIndegrees(theorem_dag):
     indegrees = {k:0 for k in theorem_dag}
     for k in theorem_dag:
         for v in theorem_dag[k]:
@@ -278,7 +295,7 @@ def getIndegreeDist(theorem_dag):
 def randomTopSort(theorem_dag):
     dag = copy.deepcopy(theorem_dag)
     L = []
-    indegree_dict = getIndegreeDist(dag)
+    indegree_dict = getNodeIndegrees(dag)
     S = {k for k in indegree_dict if indegree_dict[k] == 0}
     while S:
         n = S.pop()
@@ -359,6 +376,7 @@ print(genComparableGraph(ev_4_dag))
 #+END_SRC
 
 #+RESULTS:
+[[file:{'ev_SS': [], '6': [], '4': [], 'App1': ['4', 'App3', 'ev_SS'], 'App2': ['6', 'ev_SS', 'App1'], '2': [], 'ev_8.ev_2': [], 'App3': ['ev_8.ev_2', '2', 'ev_SS']}]]
 [[file:['App1', 'App2', '2', 'ev_0', 'O', 'ev_SS']]]
 [[file:[3, 6, 0, 4, 5, 2, 7, 8, 1, 9]]]
 [[file:[5, 1, 4]]]
@@ -430,14 +448,13 @@ outfile
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_gen_DAG.png]]
 
-
 *** Export multiple replica DAG's
 **** Utils
 
 #+BEGIN_SRC python :session :results output silent
 
 def genComparableGraphsSlow(theorem_dag, num_graphs, test=False):
-    #preprocessing
+    #prep
     theorem_nodes = list(theorem_dag.keys())
     name_to_num = {name: num for num, name in enumerate(theorem_nodes)}
     num_to_name = {num: name for num, name in enumerate(theorem_nodes)}
@@ -512,7 +529,6 @@ def genComparableGraphs(theorem_dag, num_graphs, test=False):
     return new_graphs
 
 
-
 def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, depth=2, plot=False):
     outfolder = './ProofDAGs/'+theorem_name+'/'
     if not os.path.exists(outfolder):
@@ -561,7 +577,7 @@ exportDAGs(theorem_name, max_depth=5, num_replicas=5)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'sqrt2_not_rational'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5)
 #+END_SRC
 
 **** birthday_paradox
@@ -575,14 +591,14 @@ exportDAGs(theorem_name, max_depth=4, num_replicas=5)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'bertrand_ballot'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5)
 #+END_SRC
 
 **** FTA
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'FTA'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5)
 #+END_SRC
 
 
@@ -632,7 +648,8 @@ exportDAGs(theorem_name, max_depth=3, num_replicas=5)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Alt_PI_eq'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replica
+s=5)
 #+END_SRC
 
 **** Pigeonhole
@@ -655,6 +672,217 @@ exportDAGs(theorem_name, max_depth=3, num_replicas=5)
 
 
 ** DAG analysis
+*** Plot degree distributions
+**** Utils
+
+#+BEGIN_SRC python :session :results output silent
+
+def plotLineGraph(vals, outfile, figsize=(6,4)):
+    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+    axs.plot(range(len(vals)), vals, 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def modifiedLog(x):
+    return 0 if x == 0 else math.log(x)
+
+def plotLineGraphLogLog(vals, outfile, figsize=(6,4)):
+    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+    axs.plot(list(map(modifiedLog, range(len(vals)))),
+             list(map(modifiedLog, vals)), 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+
+def plotLineGraphs(vals, outfile):
+    figsize = (6,3*len(vals))
+    fig, axs = plt.subplots(len(vals), 1, sharex = True, figsize=figsize)
+    for i in range(len(vals)):
+        ax = axs[i]
+        ax.plot(range(len(vals[i])), vals[i], 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def importDAG(filename):
+    with open(filename,'r') as f:
+       return json.loads(f.readline())
+
+def importOrigDAG(theorem_name, depth):
+    filename = './ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt'
+    return importDAG(filename)
+
+def stringifyValues(d):
+    return {k:list(map(str, v)) for k,v in d.items()}
+
+def importRandDAGs(theorem_name, depth):
+    folder_name = './ProofDAGs/'+theorem_name
+    filenames = map(lambda y: folder_name +'/'+y,
+                    filter(lambda x: 'gen_d'+str(depth)+'_' in x,
+                           os.listdir(folder_name)))
+    return list(map(stringifyValues, map(importDAG, filenames)))
+
+def flipDictionary(d):
+    unique_vals = set(d.values())
+    return {x:set([k for k in d if d[k]==x]) for x in unique_vals}
+
+def getNodeOutdegrees(dag):
+    return {k:len(v) for k,v in dag.items()}
+
+def getDegreeDist(dag, in_or_out):
+    node_degrees = getNodeIndegrees(dag) if in_or_out == 'in' else getNodeOutdegrees(dag)
+    degrees_to_nodes = flipDictionary(node_degrees)
+    return {k:len(v) for k,v in degrees_to_nodes.items()}
+
+def getOutdegreeDist(dag):
+    node_outdegrees = {k:len(v) for k,v in dag.items()}
+    outdegrees_to_nodes = flipDictionary(node_outdegrees)
+    return {k:len(v) for k,v in outdegrees_to_nodes.items()}
+
+
+def sparseToDense(d):
+    return [d[x] if x in d else 0 for x in range(max(d)+1)]
+
+def degreeOrigFileName(theorem_name, depth, in_or_out):
+    return './Images/'+theorem_name+'_d'+str(depth)+'_'+in_or_out+'degree_dist.png'
+
+def plotOrigDegreeDist(theorem_name, depth, in_or_out):
+    dag = importOrigDAG(theorem_name, depth)
+    sparse_degree_dist = getDegreeDist(dag, in_or_out)
+    degree_dist = sparseToDense(sparse_degree_dist)
+    plotLineGraph(degree_dist, degreeOrigFileName(theorem_name, depth, in_or_out))
+
+def sumDicts(d1, d2):
+    all_keys = set(d1.keys()).union(set(d2.keys()))
+    out = dict()
+    for k in all_keys:
+        if (k in d1) and (k in d2):
+            out[k] = d1[k] + d2[k]
+        elif k in d1:
+            out[k] = d1[k]
+        else:
+            out[k] = d2[k]
+    return out
+
+assert(sumDicts({'fs':1}, {'fdsa':1, 'fs':2}) == {'fdsa':1, 'fs':3})
+
+def averageDicts(dicts):
+    sum_dicts = functools.reduce(sumDicts, dicts, {})
+    return {k:v/len(dicts) for k,v in sum_dicts.items()}
+
+def degreeRandFileName(theorem_name, depth, in_or_out):
+    return './Images/gen_'+theorem_name+'_d'+str(depth)+'_'+in_or_out+'degree_dist.png'
+
+def plotRandDegreeDist(theorem_name, depth, in_or_out):
+    dags = importRandDAGs(theorem_name, depth)
+    degree_dists = list(map(lambda x: getDegreeDist(x, in_or_out), dags))
+    sparse_degree_dist_ave = averageDicts(degree_dists)
+    plotLineGraph(sparseToDense(sparse_degree_dist_ave),
+                  degreeRandFileName(theorem_name, depth, in_or_out))
+
+#+END_SRC
+
+**** Examples
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, in_or_out = 'sqrt2_not_rational', 5, 'in'
+plotOrigDegreeDist(theorem_name, depth, in_or_out)
+degreeOrigFileName(theorem_name, depth, in_or_out)
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d5_indegree_dist.png]]
+[[file:[1, 6, 0, 1]]]
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, in_or_out = 'sqrt2_not_rational', 3, 'in'
+plotRandDegreeDist(theorem_name, depth, in_or_out)
+degreeRandFileName(theorem_name, depth, in_or_out)
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_sqrt2_not_rational_d3_indegree_dist.png]]
+
+
+
+
+*** Count number of undirected loops
+
+#+BEGIN_SRC python :session :results output silent
+
+def countNumSimplePaths(dag):
+    undir_G = nx.Graph(dag)
+    total = 0
+    for x in dag:
+        total += len(list(nx.all_simple_paths(undir_G, x,x)))
+    return total
+
+#+END_SRC
+
+*** Pagerank
+
+#+BEGIN_SRC python :session :results output silent
+
+def getPageRank(dag):
+    return nx.algorithms.link_analysis.pagerank(nx.Graph(dag))
+
+def getAveragePageRank(dags):
+    return averageDicts(list(map(getPageRank, dags)))
+
+def getSortedRankings(rankings):
+    return sorted(rankings.values(), key=lambda x: -x)
+
+def pageRankOrigFileName(theorem_name, depth):
+    return './Images/'+theorem_name+'_d'+str(depth)+'_page_rank.png'
+
+def pageRankRandFileName(theorem_name, depth):
+    return './Images/gen_'+theorem_name+'_d'+str(depth)+'_page_rank.png'
+
+def plotOrigPageRank(theorem_name, depth):
+    dag = importOrigDAG(theorem_name, depth)
+    rank = getSortedRankings(getPageRank(dag))
+    print("Beta: ", estimateBeta(rank))
+    plotLineGraph(rank, pageRankOrigFileName(theorem_name, depth))
+
+def plotRandPageRank(theorem_name, depth):
+    dags = importRandDAGs(theorem_name, depth)
+    rank = getSortedRankings(getAveragePageRank(dags))
+    print("Beta: ", estimateBeta(rank))
+    plotLineGraph(rank, pageRankRandFileName(theorem_name, depth))
+
+def average(lst):
+    return sum(lst)/len(lst)
+
+def estimateBeta(rankings):
+    exp_val_log = average(list(map(math.log, rankings)))
+    return fsolve(lambda beta: exp_val_log - digamma(beta) + digamma(len(rank)*beta), 0.5)
+
+
+#+END_SRC
+
+*** Examples
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth = 'sqrt2_not_rational', 3
+plotOrigPageRank(theorem_name, depth)
+pageRankOrigFileName(theorem_name, depth)
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d3_page_rank.png]]
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth= 'sqrt2_not_rational', 3
+plotRandPageRank(theorem_name, depth)
+pageRankRandFileName(theorem_name, depth)
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_sqrt2_not_rational_d3_page_rank.png]]
+
+
+
+
+** DAG analysis'
 *** Basic DAG Analysis Utils
 
 **** Utils
@@ -874,6 +1102,7 @@ theoremNameToModularitiesOutfile(theorem_name)
 
 
 #+END_SRC
+
 
 *** DAG Motif Finding
 
@@ -1096,28 +1325,6 @@ outfile
 [[file:Images/ev_8_alt_dag_compressed_2.png]]
 
 *** Plot size v num compressions
-**** Utils
-
-#+BEGIN_SRC python :session :results output silent
-
-def plotLineGraph(vals, outfile, figsize=(6,4)):
-    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
-    axs.plot(range(len(vals)), vals, 'r+')
-    fig.tight_layout()
-    plt.savefig(outfile)
-
-def plotLineGraphs(vals, outfile):
-    figsize = (6,3*len(vals))
-    fig, axs = plt.subplots(len(vals), 1, sharex = True, figsize=figsize)
-    for i in range(len(vals)):
-        ax = axs[i]
-        ax.plot(range(len(vals[i])), vals[i], 'r+')
-    fig.tight_layout()
-    plt.savefig(outfile)
-
-
-#+END_SRC
-
 **** ev_8
 ***** Original
 
