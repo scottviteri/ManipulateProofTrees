@@ -1,5 +1,5 @@
-DIGEST 6c1bd6bc9e6a39fb618bdc917791cd9c
+DIGEST 860791626292f80defc610cfc2c841f9
 FExportProof
 R101:118 PrintAST.ASTPlugin <> <> lib
-R137:146 Coq.Sets.Image <> <> lib
-R158:167 Coq.Sets.Image <> Pigeonhole thm
+R137:148 CoRN.ftc.FTC <> <> lib
+R160:163 CoRN.ftc.FTC <> FTC1 thm

@@ -29,7 +29,7 @@ import random
 import community
 import re
 from utils import *
-from scipy.special import digmma
+from scipy.special import digamma
 from scipy.optimize import fsolve
 
 #+END_SRC
@@ -626,7 +626,7 @@ exportDAGs(theorem_name, max_depth=3, num_replicas=5)
 **** FTC (Fundamental Theorem of Integral Calculus)
 
 #+BEGIN_SRC python :session :results output silent
-theorem_name = 'FTC'
+theorem_name = 'FTC1'
 exportDAGs(theorem_name, max_depth=4, num_replicas=5)
 #+END_SRC
 
