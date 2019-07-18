@@ -10,12 +10,7 @@
 * DONE Factor out common functionality between ManipPfTrees.org and GenerateDependencyGraphs.org
   Want tree manip utilities, plot num nodes at depth
 
-* TODO Create DAG for library
-  Partially done -- have DAGs for library, but unify into one.
-  Find where exporting library
-   Actually in GenerateDependencyGraphs
-   Exports to ProofTrees
-    Could create ProofTrees/Reals/
+* DONE Create DAG for library
 
   Plan:
    Copy relevant code to ManipPfTrees.org

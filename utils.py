@@ -299,3 +299,22 @@ def plotNodesVExtractionDepth(theorem_name, max_depth, figsize = (6,6)):
        #axs[1][1].set_xlabel('Log Extraction Depth')
        fig.tight_layout()
        plt.savefig(f)
+
+def libNameToTheoremNames(library_name, depth=1):
+    with open('ProofTrees/'+library_name+'_d'+str(depth)+'.txt','r') as f:
+        names = f.readlines()
+    return list(map(lambda x: x.strip(), names))
+
+def libNameToTheoremDict(library_name, debug=False, depth=2, limit=None):
+    if not os.path.exists('./ProofTrees/'+library_name+'_d'+str(depth)+'.txt'):
+        subprocess.call(['./lib_to_trees.sh', library_name, str(depth)])
+    theorem_names = libNameToTheoremNames(library_name, depth)
+    if limit:
+        theorem_names = theorem_names[:limit]
+    theorems = {}
+    for theorem_name in theorem_names:
+        print(theorem_name)
+        theorem_tree = theoremNameToLists(theorem_name, depth=depth, debug=debug)
+        if theorem_tree != []:
+            theorems[theorem_name] = theorem_tree
+    return theorems

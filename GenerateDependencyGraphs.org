@@ -27,7 +27,7 @@ import os
 import random
 import community
 import re
-from utils import *
+import utils
 
 #+END_SRC
 
@@ -57,8 +57,8 @@ def theoremToDependencyDict(theorem):
         new_frontier_theorem_indices = []
         for theorem_i in old_frontier_theorem_indices:
             theorem_name = lemma_candidates[theorem_i]
-            dependencies = allAtLeaves(lemma_candidates[max(old_frontier_theorem_indices)+1:],
-                                       theorem_trees[theorem_i])
+            dependencies = utils.allAtLeaves(lemma_candidates[max(old_frontier_theorem_indices)+1:],
+                                             theorem_trees[theorem_i])
             theorem_to_dependencies[theorem_name] = dependencies
             new_frontier_theorem_indices.extend(
                 list(map(lambda x: lemma_candidates.index(x), dependencies)))
@@ -147,7 +147,7 @@ def exportIndivResults(theorem_name, graph, depth):
 def plotDepGraphFromTheoremName(theorem_name, depth=2, label=False, figsize=(4,4), export=True):
     outfile = theoremNameToOutfile(theorem_name)
     if not os.path.exists(outfile):
-        theorem = theoremNameToLists(theorem_name, depth=depth)
+        theorem = utils.theoremNameToLists(theorem_name, depth=depth)
         graph = theoremToDependencyGraph(theorem)
         if export:
             exportIndivResults(theorem_name, graph, depth)
@@ -159,25 +159,6 @@ def plotDepGraphFromTheoremName(theorem_name, depth=2, label=False, figsize=(4,4
 **** Plot/Export graph for library theorems
 
 #+BEGIN_SRC python :session :results output silent
-
-def libNameToTheoremNames(library_name):
-    with open('ProofTrees/'+library_name+'.txt','r') as f:
-        names = f.readlines()
-    return list(map(lambda x:x.strip(), names))
-
-def libNameToTheoremDict(library_name, debug=False, depth=2, limit=None):
-    if not os.path.exists('./ProofTrees/'+library_name+'.txt'):
-        subprocess.call(['./lib_to_trees.sh', library_name, str(depth)])
-    theorem_names = libNameToTheoremNames(library_name)
-    if limit:
-        theorem_names = theorem_names[:limit]
-    theorems = {}
-    for theorem_name in theorem_names:
-        print(theorem_name)
-        theorem_tree = theoremNameToLists(theorem_name, depth=depth, debug=debug)
-        if theorem_tree != []:
-            theorems[theorem_name] = theorem_tree
-    return theorems
 
 def libNameToOutfile(library_name):
     return 'Images/' + library_name + '_library_dependencies.png'
@@ -196,7 +177,7 @@ def plotDepGraphFromLibraryName(library_name, depth=2, label=False, figsize = (8
     assert(library_name in os.listdir('/home/scottviteri/LocalSoftware/coq/theories'))
     outfile = libNameToOutfile(library_name)
     if not os.path.exists(outfile):
-        theorems = libNameToTheoremDict(library_name, debug=debug)
+        theorems = utils.libNameToTheoremDict(library_name, debug=debug)
         graph = theoremListToDependencyGraph(theorems.values())
         if export:
             for theorem_name in theorems:
@@ -373,7 +354,7 @@ def getLeaves(tree):
             leaves.extend(getLeaves(x))
     return leaves
 
-assert(getLeaves(ev_4_tree) ==
+assert(getLeaves(utils.ev_4_tree) ==
        ['ev_4.ev_4', 'ev_SS', '2', 'ev_4.ev_2', 'ev_4.ev_2', 'ev_SS', 'O', 'ev_0']
 )
 
@@ -383,7 +364,7 @@ def getTheoremLeaves(tree):
     all_leaves = map(getLeaves, [x[2] for x in defs if len(x) >= 3])
     return functools.reduce(lambda x,y: x+y, all_leaves, [])
 
-assert(getTheoremLeaves(ev_4_tree) ==
+assert(getTheoremLeaves(utils.ev_4_tree) ==
     ['ev_SS', '2', 'ev_4.ev_2', 'ev_SS', 'O', 'ev_0']
 )
 
@@ -405,7 +386,7 @@ def compressTrees(trees, new_theorem_name='th0'):
                 if isinstance(match_tree, list) :
                     num_matches = countMatches(match_tree, trees)
                     if num_matches >= 2:
-                        all_matches.append((match_tree, num_matches*countNodes(match_tree)))
+                        all_matches.append((match_tree, num_matches*utils.countNodes(match_tree)))
             frontier.extend(current_node[1:])
             index_list.append(index_count)
 
@@ -413,7 +394,7 @@ def compressTrees(trees, new_theorem_name='th0'):
         match_tree = max(all_matches, key=lambda x:x[1])[0]
         match_locations = locateMatches(match_tree, trees)
         match_theorem_names = [trees[loc[0]][1] for loc in match_locations]
-        compressed_tree = replaceVal(trees, match_tree, new_theorem_name)
+        compressed_tree = utils.replaceVal(trees, match_tree, new_theorem_name)
         compressed_tree.append(['Definition', new_theorem_name, match_tree])
         #compressed_tree = removeSubtree(match_tree, trees)
         return match_tree, match_theorem_names, compressed_tree
@@ -519,7 +500,7 @@ If there are no secondary
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/ev_4_gen_dep_graph.png'
-x,y = substTreesToDepGraph(['Top',replaceDefinitions(ev_4_tree)])
+x,y = substTreesToDepGraph(['Top', utils.replaceDefinitions(utils.ev_4_tree)])
 plotDependencyGraph(nx.DiGraph(x), outfile, label=True)
 outfile
 #+END_SRC
@@ -529,7 +510,7 @@ outfile
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/ev_8_alt_gen_dep_graph.png'
-x,y = substTreesToDepGraph(['Top', replaceDefinitions(ev_8_alt_tree)])
+x,y = substTreesToDepGraph(['Top', utils.replaceDefinitions(utils.ev_8_alt_tree)])
 plotDependencyGraph(nx.DiGraph(x),
                       outfile, label=True, figsize=(4,4))
 
@@ -543,16 +524,16 @@ outfile
 
 #+BEGIN_SRC python :session :results output silent
 def libNameToTheoremPairs(library_name, depth=2, debug=False):
-    theorem_names = libNameToTheoremNames(library_name)
+    theorem_names = utils.libNameToTheoremNames(library_name)
     count = 0
     should_compute = yield
     for theorem_name in theorem_names:
         #print("theorem_name:", theorem_name)
         #print("should_compute:", should_compute)
         if should_compute:
-            unsub_theorem_def = theoremNameToLists(theorem_name, debug=debug)
+            unsub_theorem_def = utils.theoremNameToLists(theorem_name, debug=debug)
             if unsub_theorem_def != []:
-                sub_theorem_def = replaceDefinitions(unsub_theorem_def)
+                sub_theorem_def = utils.replaceDefinitions(unsub_theorem_def)
                 count += 1
                 should_compute = yield((unsub_theorem_def, sub_theorem_def))
         else:
