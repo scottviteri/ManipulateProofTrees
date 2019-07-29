@@ -138,26 +138,22 @@ assert(checkEq(
 
 #+BEGIN_SRC python :session :results output silent
 
-def toplistToDAG(top_level_theorem, theorem_name=None, depth=2):
-    outfile = './ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt' if theorem_name else None
-    if outfile and os.path.exists(outfile):
-        return {k:set(v) for k,v in json.load(open(outfile)).items()}
-    else:
-        dag = {}
-        cic_count = {constr: 0 for constr in cic_constructors}
-        count = 0
-        for tree in top_level_theorem[1:]:
-            lemma_name, lemma_def = tree[1], tree[2]
-            dag, lemma_root, cic_count = listToDAGHelper(lemma_def, dag.copy(), cic_count.copy())
-            if count >= 1:
-                dag.pop(lemma_name, None)
-                for k,v in dag.items():
-                    if lemma_name in v:
-                        dag[k] = {x if x != lemma_name else lemma_root for x in v}
-            else:
-                theorem_name = lemma_name
-            count += 1
-        return dag
+def toplistToDAG(top_level_theorem, depth=2):
+    dag = {}
+    cic_count = {constr: 0 for constr in cic_constructors}
+    count = 0
+    for tree in top_level_theorem[1:]:
+        lemma_name, lemma_def = tree[1], tree[2]
+        dag, lemma_root, cic_count = listToDAGHelper(lemma_def, dag.copy(), cic_count.copy())
+        if count >= 1:
+            dag.pop(lemma_name, None)
+            for k,v in dag.items():
+                if lemma_name in v:
+                    dag[k] = {x if x != lemma_name else lemma_root for x in v}
+        else:
+            theorem_name = lemma_name
+        count += 1
+    return dag
 
 assert(toplistToDAG(utils.ev_4_tree)
         == {'ev_SS': set(), '2': set(), 'App1': {'2', 'App2', 'ev_SS'}, 'O': set(),
@@ -648,7 +644,7 @@ def exportReplicas(theorem_name, depth, num_replicas, mod_libs=False):
 def exportDAGs(theorem_name, max_depth, num_replicas, mod_libs=False, plot=False):
     for depth in range(1, max_depth+1):
         tree = utils.theoremNameToLists(theorem_name, depth, mod_libs=mod_libs)
-        dag = toplistToDAG(tree, theorem_name, depth=depth)
+        dag = toplistToDAG(tree, depth=depth)
         exportOrigAndReplicas(dag, theorem_name, num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
 
 def exportLibDAG(library_name, max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
@@ -759,65 +755,111 @@ exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Quadratic_reciprocity'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Quadratic_reciprocity'
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** Euler_exp_totient
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Euler_exp_totient'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Euler_exp_totient'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** FTC (Fundamental Theorem of Integral Calculus)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'FTC1'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'FTC1'
+exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** Liouville's Theorem and the Construction of Trancendental Numbers
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Liouville_theorem'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Liouville_theorem'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** The Non-Denumerability of the Continuum
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'reals_not_countable'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'reals_not_countable'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** Leibniz's Series for Pi
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Alt_PI_eq'
-exportDAGs(theorem_name, max_depth=2, num_replica
-s=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
 #+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Alt_PI_eq'
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
+#+END_SRC
+
 
 **** Pigeonhole
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Pigeonhole'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Pigeonhole'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** Taylor's Theorem
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Taylor'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'Taylor'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** Arith Library
 
 #+BEGIN_SRC python :session :results output silent
 library_name = 'Arith'
-exportLibDAG(library_name, max_depth=3, num_replicas=5)
+exportLibDAG(library_name, max_depth=3, num_replicas=5, mod_libs=False)
 #+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+library_name = 'Arith'
+exportLibDAG(library_name, max_depth=3, num_replicas=5, mod_libs=True)
+#+END_SRC
+
 
 
 ** DAG analysis
@@ -902,7 +944,7 @@ def plotOrigDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
     dag = importOrigDAG(theorem_name, depth, mod_libs=mod_libs)
     sparse_degree_dist = getDegreeDist(dag, in_or_out)
     degree_dist = sparseToDense(sparse_degree_dist)
-    plotLineGraph(degree_dist, getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
+    plotLineGraphLogLog(degree_dist, getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
 
 def sumDicts(d1, d2):
     all_keys = set(d1.keys()).union(set(d2.keys()))
@@ -929,8 +971,8 @@ def plotRandDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
     dags = importRandDAGs(theorem_name, depth)
     degree_dists = list(map(lambda x: getDegreeDist(x, in_or_out), dags))
     sparse_degree_dist_ave = averageDicts(degree_dists)
-    plotLineGraph(sparseToDense(sparse_degree_dist_ave),
-                  getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
+    plotLineGraphLogLog(sparseToDense(sparse_degree_dist_ave),
+                        getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
 
 #+END_SRC
 
@@ -953,7 +995,7 @@ getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/gen_sqrt2_not_rational_d3_outdegree_dist.png]]
+[[file:./Images/gen_sqrt2_not_rational_d3_indegree_dist.png]]
 
 
 *** Count number of undirected loops
@@ -1021,7 +1063,7 @@ pageRankOrigFileName(theorem_name, depth, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_d3_page_rank.png]]
+[[file:./Images/sqrt2_not_rational_d3_mod_page_rank.png]]
 
 ****** Null model
 
@@ -1046,26 +1088,26 @@ def getModularity(dag):
    partition = community.best_partition(graph)
    return community.modularity(partition, graph)
 
-def getModularitiesFileName(theorem_name, depth):
-    return './Images/'+theorem_name+'_d'+str(depth)+'_modularities.png'
+def getModularitiesFileName(theorem_name, depth, mod_libs=False):
+    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'modularities.png'
 
-def plotOrigVRandModularity(theorem_name, depth, outfile):
-    orig_modularity = getModularity(importOrigDAG(theorem_name, depth))
+def plotOrigVRandModularity(theorem_name, depth, outfile, mod_libs=False):
+    orig_modularity = getModularity(importOrigDAG(theorem_name, depth, mod_libs=mod_libs))
     #print("orig modularity: ", orig_modularity)
-    rand_modularities = list(map(getModularity, importRandDAGs(theorem_name, depth)))
+    rand_modularities = list(map(getModularity, importRandDAGs(theorem_name, depth, mod_libs=mod_libs)))
     plotLineGraph([orig_modularity]+rand_modularities, outfile)
 
 #+END_SRC
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth = 'sqrt2_not_rational', 3
-outfile = getModularitiesFileName(theorem_name, depth)
-plotOrigVRandModularity(theorem_name, depth, outfile)
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
+outfile = getModularitiesFileName(theorem_name, depth, mod_libs=mod_libs)
+plotOrigVRandModularity(theorem_name, depth, outfile, mod_libs=mod_libs)
 outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_d3_modularities.png]]
+[[file:./Images/sqrt2_not_rational_d2_modularities.png]]
 
 ** DAG analysis'
 

@@ -1,0 +1,1 @@
+(Definition Coq.Arith.Compare_dec.lt_dec (Lambda gen_var_1 nat (Lambda gen_var_2 nat (App Coq.Arith.Compare_dec.le_dec (App S gen_var_1) gen_var_2)))) 
