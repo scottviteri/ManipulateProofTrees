@@ -1,1 +1,0 @@
-(Definition ev_4.ev_2 (App ev_SS O ev_0)) (Definition ev_4.ev_4 (App ev_SS (App S (App S O)) ev_4.ev_2)) 

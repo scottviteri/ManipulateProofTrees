@@ -1,1 +1,0 @@
-(Definition Coq.Arith.Wf_nat.induction_ltof2 (Lambda gen_var_1 (Sort Type) (Lambda gen_var_2 (Prod Anonymous gen_var_1 nat) (App Coq.Init.Wf.well_founded_induction gen_var_1 (App Coq.Arith.Wf_nat.ltof gen_var_1 gen_var_2) (App Coq.Arith.Wf_nat.well_founded_ltof gen_var_1 gen_var_2))))) 

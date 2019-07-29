@@ -402,7 +402,6 @@ def compressTrees(trees, new_theorem_name='th0'):
     #print('all_matches', all_matches)
     return (None, None, trees)
 
-
 def labelLeaves(trees):
     # extract leaves
     leaves_to_theorems = {}

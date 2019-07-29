@@ -99,14 +99,14 @@ def parenStringToLists(paren_string, debug=False):
     theorem_rev = subNats(json.loads(accum))
     return [theorem_rev[0]] + theorem_rev[1:][::-1]
 
-def theoremNameToLists(theorem_name, depth=2, debug=False):
+def theoremNameToLists(theorem_name, depth=2, debug=False, mod_libs=False):
     theorem_folder = './ProofTrees/'+theorem_name
     if not os.path.exists(theorem_folder + '/d'+str(depth)+'.txt'):
         print('Generating proof objects for', theorem_name)
         subprocess.call(["./coq_proof_to_trees.sh", theorem_name])
-    with open(theorem_folder + '/d'+str(depth)+'.txt', 'r') as f:
+    tree_file = theorem_folder + '/d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
+    with open(tree_file, 'r') as f:
         paren_string = f.read()
-    #assert(paren_string != '')
     if (paren_string != ''):
         return parenStringToLists('(Top ' + paren_string.strip() + ')', debug=debug)
     return []
@@ -305,7 +305,7 @@ def libNameToTheoremNames(library_name, depth=1):
         names = f.readlines()
     return list(map(lambda x: x.strip(), names))
 
-def libNameToTheoremDict(library_name, debug=False, depth=2, limit=None):
+def libNameToTheoremDict(library_name, debug=False, depth=2, mod_libs=False, limit=None):
     if not os.path.exists('./ProofTrees/'+library_name+'_d'+str(depth)+'.txt'):
         subprocess.call(['./lib_to_trees.sh', library_name, str(depth)])
     theorem_names = libNameToTheoremNames(library_name, depth)
@@ -314,7 +314,7 @@ def libNameToTheoremDict(library_name, debug=False, depth=2, limit=None):
     theorems = {}
     for theorem_name in theorem_names:
         print(theorem_name)
-        theorem_tree = theoremNameToLists(theorem_name, depth=depth, debug=debug)
+        theorem_tree = theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs, debug=debug)
         if theorem_tree != []:
             theorems[theorem_name] = theorem_tree
     return theorems

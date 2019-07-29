@@ -28,12 +28,11 @@ import os
 import random
 import community
 import re
-from utils import *
+import utils
 from scipy.special import digamma
 from scipy.optimize import fsolve
 
 #+END_SRC
-
 
 ** Create theorem dags from unsubbed representations
 
@@ -112,15 +111,15 @@ a = ['App','2','2']
 b = ['App','2',a]
 c = ['App',b,b]
 
-#ev_4_tree = theoremNameToLists('ev_4', depth=2)
+#utils.ev_4_tree = utils.theoremNameToLists('ev_4', depth=2)
 
 # did we want this (App3)?
 assert(checkEq(listToDAG(c)[0],
                {'2': set(), 'App1': {'2'}, 'App2': {'2', 'App1'}, 'App3': {'App2'}}))
 
 assert(checkEq(
-        listToDAG(ev_4_tree[1][2])[0],
-        {'ev_SS': set(), '2': set(), 'ev_4.ev_2': set(), 'App1': set(['ev_SS', '2', 'ev_4.ev_2'])}))
+        listToDAG(utils.ev_4_tree[1][2])[0],
+        {'ev_SS': set(), '2': set(), 'ExportProof.ev_2': set(), 'App1': set(['ev_SS', '2', 'ExportProof.ev_2'])}))
 
 assert(checkEq(listToDAG(['App',['App','2','2'],['App','2','2']])[0],
                {'2': set(), 'App1': {'2'}, 'App2': {'App1'}}))
@@ -160,7 +159,7 @@ def toplistToDAG(top_level_theorem, theorem_name=None, depth=2):
             count += 1
         return dag
 
-assert(toplistToDAG(ev_4_tree)
+assert(toplistToDAG(utils.ev_4_tree)
         == {'ev_SS': set(), '2': set(), 'App1': {'2', 'App2', 'ev_SS'}, 'O': set(),
             'ev_0': set(), 'App2': {'ev_0', 'O', 'ev_SS'}})
 
@@ -170,28 +169,8 @@ assert(toplistToDAG(ev_4_tree)
 
 #+BEGIN_SRC python :session :results output silent
 
-def libNameToTheoremNames(library_name, depth=1):
-    with open('ProofTrees/'+library_name+'_d'+str(depth)+'.txt','r') as f:
-        names = f.readlines()
-    return list(map(lambda x: x.strip(), names))
-
-def libNameToTheoremDict(library_name, debug=False, depth=2, limit=None):
-    if not os.path.exists('./ProofTrees/'+library_name+'_d'+str(depth)+'.txt'):
-        subprocess.call(['./lib_to_trees.sh', library_name, str(depth)])
-    theorem_names = libNameToTheoremNames(library_name, depth)
-    if limit:
-        theorem_names = theorem_names[:limit]
-    theorems = {}
-    for theorem_name in theorem_names:
-        print(theorem_name)
-        theorem_tree = theoremNameToLists(theorem_name, depth=depth, debug=debug)
-        if theorem_tree != []:
-            theorems[theorem_name] = theorem_tree
-    return theorems
-
-
-def libNameToDAG(library_name, depth=2, limit=None):
-    theorem_dict = libNameToTheoremDict(library_name, depth=depth, limit=limit)
+def libNameToDAG(library_name, depth=2, mod_libs=False, limit=None):
+    theorem_dict = utils.libNameToTheoremDict(library_name, depth=depth, mod_libs=mod_libs, limit=limit)
     theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
     library_dag = toplistToDAG(theorem_tree)
     return library_dag
@@ -211,17 +190,26 @@ def plotGraph(graph, outfile, label=False, figsize=(4,4)):
     plt.xlim(l-.2,r+.2)
     plt.savefig(outfile)
 
+def plotUndirected(graph, outfile, label=False, figsize=(4,4)):
+    undir_graph = nx.Graph(graph)
+    plt.figure(figsize=figsize)
+    nx.spring_layout(undir_graph, k=5/math.sqrt(undir_graph.order()))
+    nx.draw(undir_graph, with_labels=label, node_size = 20)
+    l,r = plt.xlim()
+    plt.xlim(l-.2,r+.2)
+    plt.savefig(outfile)
+
+
 def plotGraphs(g1, g2, outfile, label=False, figsize=(4,4)):
-   if not os.path.exists(outfile):
-       fig, axs = plt.subplots(1,2,figsize=figsize)
-       nx.spring_layout(g1, k=5/math.sqrt(g1.order()))
-       nx.draw(g1, ax=axs[0], with_labels=label, node_size = 50)
-       nx.spring_layout(g2, k=5/math.sqrt(g2.order()))
-       nx.draw(g2, ax=axs[1], with_labels=label, node_size = 50)
-       range1,range2 = axs[0].get_xlim(), axs[1].get_xlim()
-       axs[0].set_xlim(range1[0]-0.2, range1[1]+0.2)
-       axs[1].set_xlim(range2[0]-0.2, range2[1]+0.2)
-       plt.savefig(outfile)
+    fig, axs = plt.subplots(1,2,figsize=figsize)
+    nx.spring_layout(g1, k=5/math.sqrt(g1.order()))
+    nx.draw(g1, ax=axs[0], with_labels=label, node_size = 50)
+    nx.spring_layout(g2, k=5/math.sqrt(g2.order()))
+    nx.draw(g2, ax=axs[1], with_labels=label, node_size = 50)
+    range1,range2 = axs[0].get_xlim(), axs[1].get_xlim()
+    axs[0].set_xlim(range1[0]-0.2, range1[1]+0.2)
+    axs[1].set_xlim(range2[0]-0.2, range2[1]+0.2)
+    plt.savefig(outfile)
 
 
 #+END_SRC
@@ -231,7 +219,7 @@ def plotGraphs(g1, g2, outfile, label=False, figsize=(4,4)):
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'ev_4'
-g = nx.DiGraph(toplistToDAG(ev_4_tree))
+g = nx.DiGraph(toplistToDAG(utils.ev_4_tree))
 plotGraph(g,'./Images/'+theorem_name+'_DAG.png',label=True)
 './Images/'+theorem_name+'_DAG.png'
 #+END_SRC
@@ -243,7 +231,7 @@ plotGraph(g,'./Images/'+theorem_name+'_DAG.png',label=True)
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'ev_8'
-g = nx.DiGraph(toplistToDAG(ev_8_tree))
+g = nx.DiGraph(toplistToDAG(utils.ev_8_tree))
 plotGraph(g, './Images/'+theorem_name+'_DAG.png', label=True)
 './Images/ev_8_DAG.png'
 #+END_SRC
@@ -252,22 +240,41 @@ plotGraph(g, './Images/'+theorem_name+'_DAG.png', label=True)
 [[file:./Images/ev_8_DAG.png]]
 
 **** sqrt2_not_rational
+***** With libraries
 
 #+BEGIN_SRC python :session :results file
-theorem_name = 'sqrt2_not_rational'
-outfile = './Images/'+theorem_name+'_DAG.png'
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
+outfile = './Images/'+theorem_name+'_d'+str(depth)+('_mod_DAG.png' if mod_libs else '_DAG.png')
+#sqrt2_tree = utils.theoremNameToLists('birthday_paradox', depth=depth, mod_libs=mod_libs)
 #sqrt2_dag = toplistToDAG(sqrt2_tree)
-#plotGraph(nx.DiGraph(sqrt2_dag), outfile, label=False, figsize=(8,8))
-'./Images/'+theorem_name+'_DAG.png'
+#plotGraph(nx.DiGraph(sqrt2_dag), outfile, label=True, figsize=(8,8))
+outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_DAG.png]]
+[[file:./Images/sqrt2_not_rational_d2_DAG.png]]
+
+***** Without libraries
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, True
+outfile = './Images/'+theorem_name+'_d'+str(depth)+('_mod_DAG.png' if mod_libs else '_DAG.png')
+#sqrt2_tree = utils.theoremNameToLists('birthday_paradox', depth=depth, mod_libs=mod_libs)
+#sqrt2_dag = toplistToDAG(sqrt2_tree)
+#plotGraph(nx.DiGraph(sqrt2_dag), outfile, label=True, figsize=(8,8))
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d2_mod_DAG.png]]
+
+
+**** birthday_paradox
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'birthday_paradox'
 outfile = './Images/'+theorem_name+'_DAG.png'
-#bday_tree = theoremNameToLists('birthday_paradox', depth=2)
+#bday_tree = utils.theoremNameToLists('birthday_paradox', depth=2)
 #bday_dag = toplistToDAG(bday_tree, theorem_name)
 #plotGraph(nx.DiGraph(bday_dag), outfile, label=False, figsize=(8,8))
 './Images/'+theorem_name+'_DAG.png'
@@ -276,14 +283,28 @@ outfile = './Images/'+theorem_name+'_DAG.png'
 #+RESULTS:
 [[file:./Images/birthday_paradox_DAG.png]]
 
+**** Pythagorean Theorem
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth = 'pythagoras', 1
+outfile = './Images/'+theorem_name+'_DAG.png'
+#dag = toplistToDAG(utils.theoremNameToLists(theorem_name, depth))
+#plotGraph(nx.DiGraph(dag), outfile, label=True, figsize=(8,8))
+'./Images/'+theorem_name+'_DAG.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/pythagoras_DAG.png]]
+
+
 
 ** Generate random DAG's with same degree distribution
 *** Generate random replica DAG's with same arities
 
-#+BEGIN_SRC python :session :results file
+#+BEGIN_SRC python :session :results output silent
 
-ev_4_dag = toplistToDAG(ev_4_tree)
-ev_8_dag = toplistToDAG(ev_8_tree)
+ev_4_dag = toplistToDAG(utils.ev_4_tree)
+ev_8_dag = toplistToDAG(utils.ev_8_tree)
 
 def anyIncomingEdges(node, graph):
     return any([node in v for v in graph.values()])
@@ -323,6 +344,9 @@ def getNodeIndegrees(theorem_dag):
         for v in theorem_dag[k]:
             indegrees[v] += 1
     return indegrees
+
+def getNodeOutdegrees(dag):
+    return {k:len(v) for k,v in dag.items()}
 
 def randomTopSort(theorem_dag):
     dag = copy.deepcopy(theorem_dag)
@@ -419,17 +443,47 @@ print(genComparableGraph(ev_4_dag))
 [[file:[(0, 0), (1, 1), (2, 2), (3, 3)]]]
 [[file:[0, 2, 3, 1]]]
 
+*** Gen replica alternate
+
+#+BEGIN_SRC python :session :results output silent
+
+#make so has no cycles
+
+#def genComparableGraph2(theorem_dag):
+#    num_nodes = len(theorem_dag)
+#    out_dict = {k:set() for k in range(num_nodes)}
+#    theorem_nodes = list(theorem_dag.keys())
+#    name_to_num = {name: num for num, name in enumerate(theorem_nodes)}
+#    num_to_name = {num: name for num, name in enumerate(theorem_nodes)}
+#    desired_outdegrees = \
+#       list(map(lambda n: len(theorem_dag[num_to_name[n]]), range(num_nodes)))
+#    indegrees = getNodeIndegrees(theorem_dag)
+#    desired_indegrees = \
+#       list(map(lambda n: indegrees[num_to_name[n]], range(num_nodes)))
+#    assert(sum(desired_outdegrees) == sum(desired_indegrees))
+#    for _ in range(sum(desired_outdegrees)):
+#        source_node = random.choices(range(num_nodes), desired_outdegrees)[0]
+#        desired_outdegrees[source_node] -= 1
+#        target_node = random.choices(range(num_nodes), desired_indegrees)[0]
+#        desired_indegrees[target_node] -= 1
+#        out_dict[source_node].add(target_node)
+#    return out_dict
+
+
+
+
+#+END_SRC
+
 *** Plot generated replica DAG's
 **** ev_4
 
 #+BEGIN_SRC python :session :results file
 outfile = './Images/ev_4_gen_DAG.png'
-ev_4_dag = toplistToDAG(ev_4_tree,'ev_4')
+ev_4_dag = toplistToDAG(utils.ev_4_tree,'ev_4')
 gen_ev_4_dag = genComparableGraph(ev_4_dag)
 plotGraphs(nx.DiGraph(ev_4_dag),
                      nx.DiGraph(gen_ev_4_dag), outfile, label=True, figsize=(8,8))
-
-'./Images/ev_4_gen_DAG.png'
+outfile
 #+END_SRC
 
 #+RESULTS:
@@ -439,7 +493,7 @@ plotGraphs(nx.DiGraph(ev_4_dag),
 
 #+BEGIN_SRC python :session :results file
 outfile = './Images/ev_8_gen_DAG.png'
-ev_8_dag = toplistToDAG(ev_8_tree,'ev_8')
+ev_8_dag = toplistToDAG(utils.ev_8_tree,'ev_8')
 gen_ev_8_dag = genComparableGraph(ev_8_dag)
 plotGraphs(nx.DiGraph(ev_8_dag),
                      nx.DiGraph(gen_ev_8_dag), outfile, label=True, figsize=(8,8))
@@ -453,7 +507,7 @@ plotGraphs(nx.DiGraph(ev_8_dag),
 
 #+BEGIN_SRC python :session :results file
 outfile = './Images/ev_4_alt_gen_DAG.png'
-ev_4_alt_dag = toplistToDAG(ev_4_alt_tree,'ev_4_alt')
+ev_4_alt_dag = toplistToDAG(utils.ev_4_alt_tree,'ev_4_alt')
 gen_ev_4_alt_dag = genComparableGraph(ev_4_alt_dag)
 plotGraphs(nx.DiGraph(ev_4_alt_dag),
                      nx.DiGraph(gen_ev_4_alt_dag), outfile, label=True, figsize=(8,8))
@@ -469,16 +523,18 @@ plotGraphs(nx.DiGraph(ev_4_alt_dag),
 #+BEGIN_SRC python :session :results file
 theorem_name = 'sqrt2_not_rational'
 outfile = './Images/'+theorem_name+'_gen_DAG.png'
-#sqrt2_dag = toplistToDAG(sqrt2_tree, 'sqrt2_not_rational')
+#sqrt2_dag = toplistToDAG(utils.sqrt2_tree, 'sqrt2_not_rational')
 #gen_sqrt2_dag = genComparableGraph(sqrt2_dag) #P52 in values but not in keys
 #plotGraphs(nx.DiGraph(sqrt2_dag),
-#                     nx.DiGraph(gen_sqrt2_dag), outfile, label=False, figsize=(8,8))
-
+#           nx.DiGraph(gen_sqrt2_dag), outfile, label=False, figsize=(8,8))
 outfile
 #+END_SRC
 
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_gen_DAG.png]]
+
+
+
 
 *** Export multiple replica DAG's
 **** Utils
@@ -560,32 +616,45 @@ def genComparableGraphs(theorem_dag, num_graphs, test=False):
         new_graphs.append(new_graph)
     return new_graphs
 
+#def genComparableGraphs2(theorem_dag, num_graphs):
+#    return [genComparableGraph2(theorem_dag) for _ in range(num_graphs)]
 
-def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, depth=2, plot=False):
+def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, depth=2, mod_libs=False, plot=False):
     outfolder = './ProofDAGs/'+theorem_name+'/'
     if not os.path.exists(outfolder):
         os.mkdir(outfolder)
-    with open(outfolder+'d'+str(depth)+'.txt','w') as f:
+    orig_out = outfolder+'d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
+    with open(orig_out,'w') as f:
         json.dump({k:list(v) for k,v in theorem_dag.items()}, f)
     if plot:
         plotGraph(nx.DiGraph(theorem_dag), './Images/'+theorem_name+'_orig_DAG.png')
     gen_dags = genComparableGraphs(theorem_dag, num_replicas)
     for i,g in enumerate(gen_dags):
-        with open(outfolder+'gen_d'+str(depth)+'_'+str(i)+'.txt','w') as f:
+        replica_out = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
+        with open(replica_out, 'w') as f:
             json.dump({k:list(v) for k,v in g.items()}, f)
         if plot:
             plotGraph(nx.DiGraph(g), './Images/'+theorem_name+'_gen_DAG_'+str(i)+'.png')
 
-def exportDAGs(theorem_name, max_depth, num_replicas, plot=False):
-    for depth in range(1, max_depth+1):
-        tree = theoremNameToLists(theorem_name, depth)
-        dag = toplistToDAG(tree, theorem_name, depth=depth)
-        exportOrigAndReplicas(dag, theorem_name, num_replicas, depth=depth, plot=plot)
+def exportReplicas(theorem_name, depth, num_replicas, mod_libs=False):
+    outfolder = './ProofDAGs/'+theorem_name+'/'
+    theorem_dag = importOrigDAG(theorem_name, depth)
+    gen_dags = genComparableGraphs(theorem_dag, num_replicas)
+    for i,g in enumerate(gen_dags):
+        gen_file = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
+        with open(gen_file, 'w') as f:
+            json.dump({k:list(v) for k,v in g.items()}, f)
 
-def exportLibDAG(library_name, max_depth, num_replicas, limit=None, plot=False):
+def exportDAGs(theorem_name, max_depth, num_replicas, mod_libs=False, plot=False):
+    for depth in range(1, max_depth+1):
+        tree = utils.theoremNameToLists(theorem_name, depth, mod_libs=mod_libs)
+        dag = toplistToDAG(tree, theorem_name, depth=depth)
+        exportOrigAndReplicas(dag, theorem_name, num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
+
+def exportLibDAG(library_name, max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
     for depth in range(1, max_depth+1):
         dag = libNameToDAG(library_name, depth=depth, limit=limit)
-        exportOrigAndReplicas(dag, library_name, num_replicas, depth=depth, plot=plot)
+        exportOrigAndReplicas(dag, library_name, num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
 
 #+END_SRC
 
@@ -593,57 +662,97 @@ def exportLibDAG(library_name, max_depth, num_replicas, limit=None, plot=False):
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'ev_4'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'ev_4'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** ev_8
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'ev_8'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'ev_8'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** ev_8_alt
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'ev_8_alt'
-exportDAGs(theorem_name, max_depth=5, num_replicas=5)
+exportDAGs(theorem_name, max_depth=5, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'ev_8_alt'
+exportDAGs(theorem_name, max_depth=5, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** sqrt2_not_rational
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'sqrt2_not_rational'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'sqrt2_not_rational'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** birthday_paradox
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'birthday_paradox'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5)
+exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=False)
 #+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'birthday_paradox'
+exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=True)
+#+END_SRC
+
 
 **** bertrand_ballot
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'bertrand_ballot'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'bertrand_ballot'
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** FTA
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'FTA'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
 #+END_SRC
 
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'FTA'
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
+#+END_SRC
 
 **** Pythagorean Theorem
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'pythagoras'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'pythagoras'
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** Quadratic_reciprocity
@@ -703,7 +812,7 @@ theorem_name = 'Taylor'
 exportDAGs(theorem_name, max_depth=3, num_replicas=5)
 #+END_SRC
 
-**** Real Library
+**** Arith Library
 
 #+BEGIN_SRC python :session :results output silent
 library_name = 'Arith'
@@ -711,10 +820,8 @@ exportLibDAG(library_name, max_depth=3, num_replicas=5)
 #+END_SRC
 
 
-
 ** DAG analysis
-*** Plot degree distributions
-**** Utils
+*** Plotting and Import/Export
 
 #+BEGIN_SRC python :session :results output silent
 
@@ -748,26 +855,31 @@ def importDAG(filename):
     with open(filename,'r') as f:
        return json.loads(f.readline())
 
-def importOrigDAG(theorem_name, depth):
-    filename = './ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt'
+def importOrigDAG(theorem_name, depth, mod_libs=False):
+    filename = './ProofDAGs/'+theorem_name+'/d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
     return importDAG(filename)
 
 def stringifyValues(d):
     return {k:list(map(str, v)) for k,v in d.items()}
 
-def importRandDAGs(theorem_name, depth):
+def importRandDAGs(theorem_name, depth, mod_libs=False):
     folder_name = './ProofDAGs/'+theorem_name
+    search_string = 'gen_d'+str(depth)+('_mod_' if mod_libs else '_')
     filenames = map(lambda y: folder_name +'/'+y,
-                    filter(lambda x: 'gen_d'+str(depth)+'_' in x,
+                    filter(lambda x: search_string in x,
                            os.listdir(folder_name)))
     return list(map(stringifyValues, map(importDAG, filenames)))
+
+#+END_SRC
+
+*** Degree distributions
+**** Utils
+
+#+BEGIN_SRC python :session :results output silent
 
 def flipDictionary(d):
     unique_vals = set(d.values())
     return {x:set([k for k in d if d[k]==x]) for x in unique_vals}
-
-def getNodeOutdegrees(dag):
-    return {k:len(v) for k,v in dag.items()}
 
 def getDegreeDist(dag, in_or_out):
     node_degrees = getNodeIndegrees(dag) if in_or_out == 'in' else getNodeOutdegrees(dag)
@@ -783,14 +895,14 @@ def getOutdegreeDist(dag):
 def sparseToDense(d):
     return [d[x] if x in d else 0 for x in range(max(d)+1)]
 
-def degreeOrigFileName(theorem_name, depth, in_or_out):
-    return './Images/'+theorem_name+'_d'+str(depth)+'_'+in_or_out+'degree_dist.png'
+def getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=False):
+    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+in_or_out+'degree_dist.png'
 
-def plotOrigDegreeDist(theorem_name, depth, in_or_out):
-    dag = importOrigDAG(theorem_name, depth)
+def plotOrigDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
+    dag = importOrigDAG(theorem_name, depth, mod_libs=mod_libs)
     sparse_degree_dist = getDegreeDist(dag, in_or_out)
     degree_dist = sparseToDense(sparse_degree_dist)
-    plotLineGraph(degree_dist, degreeOrigFileName(theorem_name, depth, in_or_out))
+    plotLineGraph(degree_dist, getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
 
 def sumDicts(d1, d2):
     all_keys = set(d1.keys()).union(set(d2.keys()))
@@ -810,38 +922,39 @@ def averageDicts(dicts):
     sum_dicts = functools.reduce(sumDicts, dicts, {})
     return {k:v/len(dicts) for k,v in sum_dicts.items()}
 
-def degreeRandFileName(theorem_name, depth, in_or_out):
-    return './Images/gen_'+theorem_name+'_d'+str(depth)+'_'+in_or_out+'degree_dist.png'
+def getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=False):
+    return './Images/gen_'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+in_or_out+'degree_dist.png'
 
-def plotRandDegreeDist(theorem_name, depth, in_or_out):
+def plotRandDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
     dags = importRandDAGs(theorem_name, depth)
     degree_dists = list(map(lambda x: getDegreeDist(x, in_or_out), dags))
     sparse_degree_dist_ave = averageDicts(degree_dists)
     plotLineGraph(sparseToDense(sparse_degree_dist_ave),
-                  degreeRandFileName(theorem_name, depth, in_or_out))
+                  getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
 
 #+END_SRC
 
 **** Examples
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, in_or_out = 'sqrt2_not_rational', 5, 'in'
-plotOrigDegreeDist(theorem_name, depth, in_or_out)
-degreeOrigFileName(theorem_name, depth, in_or_out)
+theorem_name, depth, in_or_out, mod_libs = 'sqrt2_not_rational', 3, 'in', False
+plotOrigDegreeDist(theorem_name, depth, in_or_out, mod_libs=mod_libs)
+getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_d5_indegree_dist.png]]
+[[file:./Images/sqrt2_not_rational_d3_indegree_dist.png]]
 [[file:[1, 6, 0, 1]]]
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, in_or_out = 'sqrt2_not_rational', 3, 'in'
-plotRandDegreeDist(theorem_name, depth, in_or_out)
-degreeRandFileName(theorem_name, depth, in_or_out)
+theorem_name, depth, in_or_out, mod_libs = 'sqrt2_not_rational', 3, 'in', False
+plotRandDegreeDist(theorem_name, depth, in_or_out, mod_libs=mod_libs)
+getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/gen_sqrt2_not_rational_d3_indegree_dist.png]]
+[[file:./Images/gen_sqrt2_not_rational_d3_outdegree_dist.png]]
+
 
 *** Count number of undirected loops
 
@@ -857,7 +970,7 @@ def countNumSimplePaths(dag):
 #+END_SRC
 
 *** Pagerank
-
+**** Utils
 #+BEGIN_SRC python :session :results output silent
 
 def getPageRank(dag):
@@ -869,58 +982,93 @@ def getAveragePageRank(dags):
 def getSortedRankings(rankings):
     return sorted(rankings.values(), key=lambda x: -x)
 
-def pageRankOrigFileName(theorem_name, depth):
-    return './Images/'+theorem_name+'_d'+str(depth)+'_page_rank.png'
+def pageRankOrigFileName(theorem_name, depth, mod_libs=False):
+    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'page_rank.png'
 
-def pageRankRandFileName(theorem_name, depth):
-    return './Images/gen_'+theorem_name+'_d'+str(depth)+'_page_rank.png'
+def pageRankRandFileName(theorem_name, depth, mod_libs=False):
+    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'gen_page_rank.png'
 
-def plotOrigPageRank(theorem_name, depth):
-    dag = importOrigDAG(theorem_name, depth)
+def plotOrigPageRank(theorem_name, depth, mod_libs=False):
+    dag = importOrigDAG(theorem_name, depth, mod_libs=mod_libs)
     rank = getSortedRankings(getPageRank(dag))
-    print("Beta: ", estimateBeta(rank))
-    plotLineGraph(rank, pageRankOrigFileName(theorem_name, depth))
+    #print("Beta: ", estimateBeta(rank))
+    plotLineGraphLogLog(rank, pageRankOrigFileName(theorem_name, depth, mod_libs=mod_libs))
 
-def plotRandPageRank(theorem_name, depth):
-    dags = importRandDAGs(theorem_name, depth)
+def plotRandPageRank(theorem_name, depth, mod_libs=False):
+    dags = importRandDAGs(theorem_name, depth, mod_libs=mod_libs)
     rank = getSortedRankings(getAveragePageRank(dags))
-    print("Beta: ", estimateBeta(rank))
-    plotLineGraph(rank, pageRankRandFileName(theorem_name, depth))
+    #print("Beta: ", estimateBeta(rank))
+    plotLineGraphLogLog(rank, pageRankRandFileName(theorem_name, depth, mod_libs=mod_libs))
 
 def average(lst):
     return sum(lst)/len(lst)
 
 def estimateBeta(rankings):
-    exp_val_log = average(list(map(math.log, rankings)))
-    return fsolve(lambda beta: exp_val_log - digamma(beta) + digamma(len(rank)*beta), 0.5)
+    exp_val_log = sum(list(map(lambda x: rankings[x]*math.log(x), rankings)))
+    return fsolve(lambda beta: exp_val_log - digamma(beta) + digamma(len(rankings)*beta), 0.5)
 
 
 #+END_SRC
 
-*** Examples
+**** Examples
+***** sqrt2_not_rational
+****** Original
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth = 'sqrt2_not_rational', 3
-plotOrigPageRank(theorem_name, depth)
-pageRankOrigFileName(theorem_name, depth)
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 3, False
+plotOrigPageRank(theorem_name, depth, mod_libs=mod_libs)
+pageRankOrigFileName(theorem_name, depth, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_d3_page_rank.png]]
 
+****** Null model
+
 #+BEGIN_SRC python :session :results file
-theorem_name, depth= 'sqrt2_not_rational', 3
-plotRandPageRank(theorem_name, depth)
-pageRankRandFileName(theorem_name, depth)
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 3, False
+plotRandPageRank(theorem_name, depth, mod_libs=mod_libs)
+pageRankRandFileName(theorem_name, depth, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/gen_sqrt2_not_rational_d3_page_rank.png]]
+[[file:./Images/sqrt2_not_rational_d3_gen_page_rank.png]]
 
 
 
+
+*** Modularity
+
+#+BEGIN_SRC python :session :results output silent
+
+def getModularity(dag):
+   graph = nx.Graph(dag)
+   partition = community.best_partition(graph)
+   return community.modularity(partition, graph)
+
+def getModularitiesFileName(theorem_name, depth):
+    return './Images/'+theorem_name+'_d'+str(depth)+'_modularities.png'
+
+def plotOrigVRandModularity(theorem_name, depth, outfile):
+    orig_modularity = getModularity(importOrigDAG(theorem_name, depth))
+    #print("orig modularity: ", orig_modularity)
+    rand_modularities = list(map(getModularity, importRandDAGs(theorem_name, depth)))
+    plotLineGraph([orig_modularity]+rand_modularities, outfile)
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth = 'sqrt2_not_rational', 3
+outfile = getModularitiesFileName(theorem_name, depth)
+plotOrigVRandModularity(theorem_name, depth, outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d3_modularities.png]]
 
 ** DAG analysis'
+
 *** Basic DAG Analysis Utils
 
 **** Utils
@@ -1343,7 +1491,7 @@ outfile
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/ev_8_alt_dag_compressed.png'
-new_dag = compressDAG(toplistToDAG(ev_8_alt_tree))
+new_dag = compressDAG(toplistToDAG(utils.ev_8_alt_tree))
 plotGraph(nx.DiGraph(new_dag), outfile, label=True)
 outfile
 #+END_SRC
@@ -1353,7 +1501,7 @@ outfile
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/ev_8_alt_dag_compressed_2.png'
-new_dag = compressDAG(toplistToDAG(ev_8_alt_tree),repeat=2)
+new_dag = compressDAG(toplistToDAG(utils.ev_8_alt_tree),repeat=2)
 plotGraph(nx.DiGraph(new_dag), outfile, label=True)
 outfile
 #+END_SRC
@@ -1380,7 +1528,7 @@ outfile
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/ev_8_alt_dag_compression_comparison.png'
-dag = toplistToDAG(ev_8_alt_tree)
+dag = toplistToDAG(utils.ev_8_alt_tree)
 sizes = getCompressedDAGSizes(dag, repeat=5, theorem_name='ev_8_alt')
 plotLineGraph(sizes, outfile)
 outfile
@@ -1411,7 +1559,7 @@ Notice that there are no cycles here despite the recursion
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/factorial_dag.png'
 fact_string = "(Top (Definition Top.fact (Fix (Functions (App fact 0 (Prod n nat nat) (Lambda n nat (Case 0 (Lambda n nat nat) (CaseMatch n) (CaseBranches (App S O) (Lambda n' nat (App Coq.Init.Nat.mul n (App fact n')))))))) 0)))"
-fact_tree = parenStringToLists(fact_string)
+fact_tree = utils.parenStringToLists(fact_string)
 fact_dag = toplistToDAG(fact_tree)
 plotGraph(nx.DiGraph(fact_dag), outfile, label=True)
 outfile
@@ -1460,7 +1608,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/forward_dag.png'
 forward_string = "(Top (Definition Top.forward (Lambda f (Prod Anonymous (App prod (Axiom Top.A) (Axiom Top.B)) (Axiom Top.C)) (Lambda a (Axiom Top.A) (Lambda b (Axiom Top.B) (Cast (Cast (App eq_refl (Axiom Top.C) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b))) REVERTcast (App eq (Axiom Top.C) (App f (App pair (Axiom Top.A) (Axiom Top.B) (App Coq.Init.Datatypes.fst (Axiom Top.A) (Axiom Top.B) (App pair (Axiom Top.A) (Axiom Top.B) a b)) (App Coq.Init.Datatypes.snd (Axiom Top.A) (Axiom Top.B) (App pair (Axiom Top.A) (Axiom Top.B) a b)))) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))) REVERTcast (App eq (Axiom Top.C) (App Top.uncurry (App Top.curry f) (App pair (Axiom Top.A) (Axiom Top.B) a b)) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))))))))"
-forward_tree = parenStringToLists(forward_string)
+forward_tree = utils.parenStringToLists(forward_string)
 forward_dag = toplistToDAG(forward_tree)
 plotGraph(nx.DiGraph(forward_dag), outfile, label=True)
 outfile
@@ -1511,7 +1659,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/curry_dag.png'
 curry_string = "(Top (Definition Top.curry (Lambda f (Prod Anonymous (App prod (Axiom Top.A) (Axiom Top.B)) (Axiom Top.C)) (Lambda a (Axiom Top.A) (Lambda b (Axiom Top.B) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))))))"
-curry_tree = parenStringToLists(curry_string)
+curry_tree = utils.parenStringToLists(curry_string)
 curry_dag = toplistToDAG(curry_tree)
 plotGraph(nx.DiGraph(curry_dag), outfile, label=True)
 outfile
@@ -1552,7 +1700,7 @@ There are more in the theorem case, but hard to say if that is just because of t
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/dec_inc_dag.png'
 dec_inc_string = "(Top (Definition Top.dec_inc (Lambda nat (App Top.dec (App S gen_var_2)))))"
-dec_inc_tree = parenStringToLists(dec_inc_string)
+dec_inc_tree = utils.parenStringToLists(dec_inc_string)
 dec_inc_dag = toplistToDAG(dec_inc_tree)
 print(dec_inc_dag)
 plotGraph(nx.DiGraph(dec_inc_dag), outfile, label=True)
@@ -1577,7 +1725,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/dec_inc_prop_dag.png'
 dec_inc_prop_string = "(Top (Definition Top.dec_inc_prop (Lambda nat (App eq_refl nat gen_var_1))))"
-dec_inc_prop_tree = parenStringToLists(dec_inc_prop_string)
+dec_inc_prop_tree = utils.parenStringToLists(dec_inc_prop_string)
 dec_inc_prop_dag = toplistToDAG(dec_inc_prop_tree)
 print(dec_inc_prop_dag)
 plotGraph(nx.DiGraph(dec_inc_prop_dag), outfile, label=True)
@@ -1679,7 +1827,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 theorem_name = 'sqrt2_not_rational'
 outfile = 'Images/'+theorem_name+'_num_cycles.png'
-sqrt2_dag = toplistToDAG(sqrt2_tree, 'sqrt2_not_rational')
+sqrt2_dag = toplistToDAG(utils.sqrt2_tree, 'sqrt2_not_rational')
 motifs_and_cycles = getNumCycles(sqrt2_dag, check_dag = False, repeat=400)
 plotLineGraphs(motifs_and_cycles, outfile)
 outfile
@@ -1708,7 +1856,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 theorem_name = 'sqrt2_not_rational_d4'
 outfile = 'Images/'+theorem_name'_num_cycles.png'
-#sqrt2_d4_tree = theoremNameToLists('sqrt2_not_rational',depth=4)
+#sqrt2_d4_tree = utils.theoremNameToLists('sqrt2_not_rational',depth=4)
 #sqrt2_d4_dag = toplistToDAG(sqrt2_d4_tree)
 #motifs_and_cycles = getNumCycles(sqrt2_d4_dag, check_dag = False, repeat=2000)
 #plotLineGraphs(motifs_and_cycles, outfile)
@@ -1725,7 +1873,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/eq_dag.png'
 eq_string = "(Top (Definition Top.eq_nat (Lambda nat (App Coq.Init.Datatypes.nat_ind (Lambda nat (App eq nat gen_var_3 gen_var_3)) (App eq_refl nat O) (Lambda nat (Lambda (App eq nat gen_var_4 gen_var_4) (App eq_refl nat (App S gen_var_4)))) gen_var_4))))"
-eq_tree = parenStringToLists(eq_string)
+eq_tree = utils.parenStringToLists(eq_string)
 eq_dag = toplistToDAG(eq_tree)
 plotGraph(nx.DiGraph(eq_dag), outfile, label=True)
 outfile
@@ -1745,6 +1893,5 @@ outfile
 
 #+RESULTS:
 [[file:Images/eq_num_cycles.png]]
-
 
 ** Find compressions in propositional logic

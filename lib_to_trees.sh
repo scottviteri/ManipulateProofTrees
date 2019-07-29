@@ -16,6 +16,12 @@ do
   mkdir -p $OUTDIR/${THEOREM}
   coqc ${PROOFS}/ExportProof.v > ${OUTDIR}/${THEOREM}/d${DEPTH}.txt
   echo ${THEOREM} >> ${OUTDIR}/${LIB}_d${DEPTH}.txt
+
+  cat ${PROOFS}/ExportProofBase.v > ${PROOFS}/ExportProof.v
+  echo "Require Import ${LIB}." >> ${PROOFS}/ExportProof.v
+  echo "PrintAST ${THEOREM} with depth ${DEPTH} mod libs." >> ${PROOFS}/ExportProof.v
+  coqc ${PROOFS}/ExportProof.v > ${OUTDIR}/${THEOREM}/d${DEPTH}_mod.txt
+
  done
 done
 

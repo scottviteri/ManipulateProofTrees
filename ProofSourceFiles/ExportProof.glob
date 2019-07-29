@@ -1,5 +1,5 @@
-DIGEST c4d2e3ccf39f8c806c8f20ae5eb1d725
+DIGEST 3ce44552a1778524ccab85571b78ee14
 FExportProof
 R101:118 PrintAST.ASTPlugin <> <> lib
-R137:141 Coq.Arith.Arith <> <> lib
-R153:174 Coq.Arith.Wf_nat <> well_founded_lt_compat thm
+R137:148 CoRN.fta.FTA <> <> lib
+R160:162 CoRN.fta.FTA <> FTA thm

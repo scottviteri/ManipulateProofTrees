@@ -13,22 +13,3 @@ Proof. apply (ev_SS 6 (ev_SS 4 ev_4)). Qed.
 
 
 
-(*
-Theorem add_even_even : forall {n m : nat}, ev m -> ev n -> ev (m + n).
-Proof.
-  intros n m Hm Hn.
-  induction Hm.
-    { simpl. apply Hn. }
-    { simpl. apply ev_SS. apply IHHm. }
-Qed.
-
-Theorem ev_4 : ev 4.
-Proof.
-  apply (add_even_even ev_2 ev_2).
-Qed.
-
-Theorem ev_8 : ev 8.
-Proof.
-  apply (add_even_even ev_4 ev_4).
-Qed.
-*)

@@ -1,1 +1,0 @@
-(Definition Coq.Reals.Rpower.ln_exp (Lambda gen_var_1 (Axiom Coq.Reals.Rdefinitions.R) (App Coq.Reals.Rpower.exp_inv (App Coq.Reals.Rpower.ln (App Coq.Reals.Rtrigo_def.exp gen_var_1)) gen_var_1 (App Coq.Reals.Rpower.exp_ln (App Coq.Reals.Rtrigo_def.exp gen_var_1) (App Coq.Reals.Exp_prop.exp_pos gen_var_1))))) 

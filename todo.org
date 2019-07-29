@@ -11,12 +11,7 @@
   Want tree manip utilities, plot num nodes at depth
 
 * DONE Create DAG for library
-
-  Plan:
-   Copy relevant code to ManipPfTrees.org
-   Once functional, move shared to utils
-   Then make utils explicit
-
+* DONE Remove utils from global namespace
 * TODO Find compressions in propositional logic
 * DONE Load different levels of theorem graphs (with rand and without) into a folder
 * TODO Do some Ising stuff on it
