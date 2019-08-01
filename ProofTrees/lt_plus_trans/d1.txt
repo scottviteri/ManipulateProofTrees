@@ -1,1 +1,0 @@
-(Definition Coq.Arith.Plus.lt_plus_trans (Lambda gen_var_1 nat (Lambda gen_var_2 nat (Lambda gen_var_3 nat (Lambda gen_var_4 (App Coq.Init.Peano.lt gen_var_1 gen_var_2) (App Coq.Arith.PeanoNat.Nat.lt_le_trans gen_var_1 gen_var_2 (App Coq.Init.Nat.add gen_var_2 gen_var_3) gen_var_4 (App Coq.Arith.PeanoNat.Nat.le_add_r gen_var_2 gen_var_3))))))) 

@@ -10,24 +10,7 @@
 
 #+BEGIN_SRC python :session :results output silent
 
-import math
-import copy
-import itertools
-import pickle
-import ast
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-import json
-import functools
-import pdb
-import cProfile
-import subprocess
-import networkx as nx
-import os
-import random
-import community
-import re
+#import community
 import utils
 from scipy.special import digamma
 from scipy.optimize import fsolve

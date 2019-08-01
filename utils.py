@@ -14,7 +14,6 @@ import subprocess
 import networkx as nx
 import os
 import random
-import community
 import re
 
 def focusToNewLetters(focus_string):
