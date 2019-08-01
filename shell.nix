@@ -7,6 +7,5 @@ stdenv.mkDerivation rec {
     python37Packages.matplotlib
     python37Packages.networkx
     python37Packages.scipy
-    coq_8_8
   ];
 }
