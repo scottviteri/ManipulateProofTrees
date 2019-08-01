@@ -731,12 +731,12 @@ exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'FTA'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'FTA'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** Pythagorean Theorem
@@ -979,14 +979,13 @@ def plotRandDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
 **** Examples
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, in_or_out, mod_libs = 'sqrt2_not_rational', 3, 'in', False
+theorem_name, depth, in_or_out, mod_libs = 'birthday_paradox', 3, 'in', True
 plotOrigDegreeDist(theorem_name, depth, in_or_out, mod_libs=mod_libs)
 getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_d3_indegree_dist.png]]
-[[file:[1, 6, 0, 1]]]
+[[file:./Images/birthday_paradox_d3_mod_indegree_dist.png]]
 
 #+BEGIN_SRC python :session :results file
 theorem_name, depth, in_or_out, mod_libs = 'sqrt2_not_rational', 3, 'in', False
@@ -1063,20 +1062,18 @@ pageRankOrigFileName(theorem_name, depth, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_d3_mod_page_rank.png]]
+[[file:./Images/sqrt2_not_rational_d3_page_rank.png]]
 
 ****** Null model
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, mod_libs = 'sqrt2_not_rational', 3, False
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 3, True
 plotRandPageRank(theorem_name, depth, mod_libs=mod_libs)
 pageRankRandFileName(theorem_name, depth, mod_libs=mod_libs)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_d3_gen_page_rank.png]]
-
-
+[[file:./Images/sqrt2_not_rational_d3_mod_gen_page_rank.png]]
 
 
 *** Modularity
@@ -1108,6 +1105,7 @@ outfile
 
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_d2_modularities.png]]
+
 
 ** DAG analysis'
 
