@@ -714,28 +714,28 @@ exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Quadratic_reciprocity'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Euler_exp_totient
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Euler_exp_totient'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** FTC (Fundamental Theorem of Integral Calculus)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'FTC1'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Liouville's Theorem and the Construction of Trancendental Numbers
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Liouville_theorem'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** The Non-Denumerability of the Continuum
