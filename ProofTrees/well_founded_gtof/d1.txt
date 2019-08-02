@@ -1,0 +1,1 @@
+(Definition Coq.Arith.Wf_nat.well_founded_gtof (Lambda gen_var_1 (Sort Type) (Lambda gen_var_2 (Prod Anonymous gen_var_1 nat) (App Coq.Arith.Wf_nat.well_founded_ltof gen_var_1 gen_var_2)))) 

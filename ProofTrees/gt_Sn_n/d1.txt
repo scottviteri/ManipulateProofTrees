@@ -1,0 +1,1 @@
+(Definition Coq.Arith.Gt.gt_Sn_n (Lambda gen_var_1 nat (App Coq.Arith.PeanoNat.Nat.lt_succ_diag_r gen_var_1))) 

@@ -1,0 +1,1 @@
+(Definition Coq.Arith.Compare_dec.dec_ge (Lambda gen_var_1 nat (Lambda gen_var_2 nat (App Coq.Arith.PeanoNat.Nat.le_decidable gen_var_2 gen_var_1)))) 

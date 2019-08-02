@@ -3,7 +3,7 @@
 PROOFS="./ProofSourceFiles"
 LIB=$1
 DEPTH=$2
-OUTDIR="./ProofTrees/"
+OUTDIR="./ProofTrees"
 BASE="/home/scottviteri/LocalSoftware/coq/theories"
 touch ${OUTDIR}/${LIB}_d${DEPTH}.txt
 for X in ${BASE}/${LIB}/*.v;

@@ -285,8 +285,8 @@ outfile = './Images/'+theorem_name+'_DAG.png'
 #+BEGIN_SRC python :session :results file
 theorem_name, depth = 'pythagoras', 1
 outfile = './Images/'+theorem_name+'_DAG.png'
-dag = toplistToDAG(utils.theoremNameToLists(theorem_name, depth))
-plotGraph(nx.DiGraph(dag), outfile, label=True, figsize=(8,8))
+#dag = toplistToDAG(utils.theoremNameToLists(theorem_name, depth))
+#plotGraph(nx.DiGraph(dag), outfile, label=True, figsize=(8,8))
 './Images/'+theorem_name+'_DAG.png'
 #+END_SRC
 
@@ -649,7 +649,7 @@ def exportDAGs(theorem_name, max_depth, num_replicas, mod_libs=False, plot=False
 
 def exportLibDAG(library_name, max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
     for depth in range(1, max_depth+1):
-        dag = libNameToDAG(library_name, depth=depth, limit=limit)
+        dag = libNameToDAG(library_name, depth=depth, mod_libs=mod_libs, limit=limit)
         exportOrigAndReplicas(dag, library_name, num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
 
 #+END_SRC
@@ -661,21 +661,11 @@ theorem_name = 'ev_4'
 exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
 #+END_SRC
 
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'ev_4'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
-#+END_SRC
-
 **** ev_8
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'ev_8'
 exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'ev_8'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** ev_8_alt
@@ -685,21 +675,11 @@ theorem_name = 'ev_8_alt'
 exportDAGs(theorem_name, max_depth=5, num_replicas=5, mod_libs=False)
 #+END_SRC
 
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'ev_8_alt'
-exportDAGs(theorem_name, max_depth=5, num_replicas=5, mod_libs=True)
-#+END_SRC
-
 **** sqrt2_not_rational
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'sqrt2_not_rational'
 exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'sqrt2_not_rational'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** birthday_paradox
@@ -709,22 +689,11 @@ theorem_name = 'birthday_paradox'
 exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=False)
 #+END_SRC
 
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'birthday_paradox'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
-#+END_SRC
-
-
 **** bertrand_ballot
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'bertrand_ballot'
 exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'bertrand_ballot'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
 #+END_SRC
 
 **** FTA
@@ -734,132 +703,117 @@ theorem_name = 'FTA'
 exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=False)
 #+END_SRC
 
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'FTA'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=True)
-#+END_SRC
-
 **** Pythagorean Theorem
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'pythagoras'
-#exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'pythagoras'
-#exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Quadratic_reciprocity
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Quadratic_reciprocity'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Quadratic_reciprocity'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Euler_exp_totient
 
+low
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Euler_exp_totient'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Euler_exp_totient'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** FTC (Fundamental Theorem of Integral Calculus)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'FTC1'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'FTC1'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=True)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Liouville's Theorem and the Construction of Trancendental Numbers
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Liouville_theorem'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Liouville_theorem'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** The Non-Denumerability of the Continuum
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'reals_not_countable'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'reals_not_countable'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Leibniz's Series for Pi
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Alt_PI_eq'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=False)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Alt_PI_eq'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, mod_libs=True)
-#+END_SRC
-
 
 **** Pigeonhole
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Pigeonhole'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Pigeonhole'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Taylor's Theorem
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Taylor'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
 
+**** Four Color Theorem
+
 #+BEGIN_SRC python :session :results output silent
-theorem_name = 'Taylor'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=True)
+theorem_name = 'four_color'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Arith Library
 
 #+BEGIN_SRC python :session :results output silent
 library_name = 'Arith'
-exportLibDAG(library_name, max_depth=3, num_replicas=5, mod_libs=False)
+exportLibDAG(library_name, max_depth=2, num_replicas=5, mod_libs=False)
 #+END_SRC
+
+**** GeoCoq Library
+
+***** Boilerplate
 
 #+BEGIN_SRC python :session :results output silent
-library_name = 'Arith'
-exportLibDAG(library_name, max_depth=3, num_replicas=5, mod_libs=True)
+def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
+    if not os.path.exists('./ProofTrees/euclid_book_d'+str(depth)+'.txt'):
+        subprocess.call(['./make_euclid_theorems.sh', str(depth)])
+    with open('./ProofTrees/euclid_book_d'+str(depth)+'.txt','r') as f:
+        theorem_names = list(map(lambda x:"euclid."+x.strip(), f.readlines()))
+    if limit:
+        theorem_names = theorem_names[:limit]
+    theorems = {}
+    return {theorem_name: utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+         for theorem_name in theorem_names}
+
+def getGeoCoqDAG(depth=2, mod_libs=False, limit=None):
+    theorem_dict = getGeoCoqTheorems(depth=depth, mod_libs=mod_libs, limit=limit)
+    theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
+    library_dag = toplistToDAG(theorem_tree)
+    return library_dag
+
+def exportGeoCoqDAG(max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
+    for depth in range(1, max_depth+1):
+        dag = getGeoCoqDAG(depth=depth, mod_libs=mod_libs, limit=limit)
+        exportOrigAndReplicas(dag, 'euclid_book', num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
 #+END_SRC
 
+***** Export
+
+#+BEGIN_SRC python :session :results output silent
+exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
+#+END_SRC
 
 
 ** DAG analysis

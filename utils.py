@@ -73,7 +73,8 @@ def replaceFlatList(lst_of_lsts, match, replacement):
     return any_replacements
 
 def subNats(lst_of_lsts):
-    l = copy.deepcopy(lst_of_lsts)
+    #l = copy.deepcopy(lst_of_lsts)
+    l = lst_of_lsts
     replaceFlatList(l, ['App','S','O'], '1')
     replaced, n = True, 1
     while replaced:
