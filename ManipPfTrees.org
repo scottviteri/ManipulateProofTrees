@@ -133,7 +133,6 @@ assert(checkEq(
 
 #+RESULTS:
 
-
 *** Convert multiple theorems to DAG
 
 #+BEGIN_SRC python :session :results output silent
@@ -294,7 +293,6 @@ outfile = './Images/'+theorem_name+'_DAG.png'
 [[file:./Images/pythagoras_DAG.png]]
 
 
-
 ** Generate random DAG's with same degree distribution
 
 *** Generate random replica DAG's with same arities
@@ -443,30 +441,38 @@ print(genComparableGraph(ev_4_dag))
 
 *** Gen replica alternate
 
+
+topological sort
+find pair of edges
+flip if still dag
+
 #+BEGIN_SRC python :session :results output silent
 
-#make so has no cycles
-
-#def genComparableGraph2(theorem_dag):
-#    num_nodes = len(theorem_dag)
-#    out_dict = {k:set() for k in range(num_nodes)}
-#    theorem_nodes = list(theorem_dag.keys())
-#    name_to_num = {name: num for num, name in enumerate(theorem_nodes)}
-#    num_to_name = {num: name for num, name in enumerate(theorem_nodes)}
-#    desired_outdegrees = \
-#       list(map(lambda n: len(theorem_dag[num_to_name[n]]), range(num_nodes)))
-#    indegrees = getNodeIndegrees(theorem_dag)
-#    desired_indegrees = \
-#       list(map(lambda n: indegrees[num_to_name[n]], range(num_nodes)))
-#    assert(sum(desired_outdegrees) == sum(desired_indegrees))
-#    for _ in range(sum(desired_outdegrees)):
-#        source_node = random.choices(range(num_nodes), desired_outdegrees)[0]
-#        desired_outdegrees[source_node] -= 1
-#        target_node = random.choices(range(num_nodes), desired_indegrees)[0]
-#        desired_indegrees[target_node] -= 1
-#        out_dict[source_node].add(target_node)
-#    return out_dict
-
+  def genComparableGraphInOut(theorem_dag, num_iterations):
+      dag = copy.deepcopy(theorem_dag)
+      num_nodes = len(dag)
+      top_sort = list(nx.topological_sort(nx.DiGraph(dag)))
+      node_to_index = {v:i for i,v in enumerate(top_sort)}
+      for _ in range(num_iterations):
+          e1_end, e2_end = None, None
+          while not e1_end:
+              e1_start = random.choice(range(num_nodes))
+              e1_end_options = list(map(lambda v: node_to_index[v], dag[top_sort[e1_start]]))
+              if e1_end_options:
+                  e1_end = random.choice(e1_end_options)
+          while not e2_end:
+              e2_start = random.choice(range(e1_end))
+              e2_end_options = list(filter(lambda x: x > e1_start,
+                                           map(lambda v: node_to_index[v], dag[top_sort[e2_start]])))
+              if e2_end_options:
+                  e2_end = random.choice(e2_end_options)
+          #now switch
+          dag[top_sort[e1_start]].remove(top_sort[e1_end])
+          dag[top_sort[e1_start]].add(top_sort[e2_end])
+          dag[top_sort[e2_start]].remove(top_sort[e2_end])
+          dag[top_sort[e2_start]].add(top_sort[e1_end])
+      assert(nx.is_directed_acyclic_graph(nx.DiGraph(dag)))
+      return dag
 
 #+END_SRC
 
@@ -476,9 +482,9 @@ print(genComparableGraph(ev_4_dag))
 #+BEGIN_SRC python :session :results file
 outfile = './Images/ev_4_gen_DAG.png'
 ev_4_dag = toplistToDAG(utils.ev_4_tree,'ev_4')
-gen_ev_4_dag = genComparableGraph(ev_4_dag)
+gen_ev_4_dag = genComparableGraph(ev_4_dag, num_iterations=10)
 plotGraphs(nx.DiGraph(ev_4_dag),
-                     nx.DiGraph(gen_ev_4_dag), outfile, label=True, figsize=(8,8))
+                     nx.DiGraph(gen_ev_4_dag), outfile, label=True, figsize=(6,6))
 outfile
 #+END_SRC
 
@@ -490,7 +496,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = './Images/ev_8_gen_DAG.png'
 ev_8_dag = toplistToDAG(utils.ev_8_tree,'ev_8')
-gen_ev_8_dag = genComparableGraph(ev_8_dag)
+gen_ev_8_dag = genComparableGraphInOut(ev_8_dag,num_iterations=10)
 plotGraphs(nx.DiGraph(ev_8_dag),
                      nx.DiGraph(gen_ev_8_dag), outfile, label=True, figsize=(8,8))
 './Images/ev_8_gen_DAG.png'
@@ -521,7 +527,7 @@ theorem_name = 'sqrt2_not_rational'
 outfile = './Images/'+theorem_name+'_gen_DAG.png'
 #tree = utils.theoremNameToLists(theorem_name)
 #dag = toplistToDAG(utils.sqrt2_tree, 'sqrt2_not_rational')
-#gen_dag = genComparableGraph(dag) #P52 in values but not in keys
+#gen_dag = genComparableGraphInOut(dag, num_iterations=10) #P52 in values but not in keys
 #plotGraphs(nx.DiGraph(dag),
 #           nx.DiGraph(gen_dag), outfile, label=False, figsize=(8,8))
 outfile
@@ -880,14 +886,9 @@ def importRandDAGs(theorem_name, depth, mod_libs=False):
 
 #+END_SRC
 
-*** Degree distributions
-**** Utils
-
+*** Degree Distributions
+**** Definitions
 #+BEGIN_SRC python :session :results output silent
-
-def flipDictionary(d):
-    unique_vals = set(d.values())
-    return {x:set([k for k in d if d[k]==x]) for x in unique_vals}
 
 def getDegreeDist(dag, in_or_out):
     node_degrees = getNodeIndegrees(dag) if in_or_out == 'in' else getNodeOutdegrees(dag)
@@ -1041,7 +1042,6 @@ pageRankRandFileName(theorem_name, depth, mod_libs=mod_libs)
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_d3_mod_gen_page_rank.png]]
 
-
 *** Modularity
 
 #+BEGIN_SRC python :session :results output silent
@@ -1096,6 +1096,95 @@ outfile
 [[file:./Images/sqrt2_not_rational_d2_modularities.png]]
 
 
+
+** DAG Generative Model
+
+**** Create DAG
+
+#+BEGIN_SRC python :session :results output silent
+
+def getAncestors(node, graph):
+    queue = [{node}]
+    non_ancestors = set(graph.keys())
+    while queue:
+        child_layer = queue.pop()
+        non_ancestors -= child_layer
+        parent_layer = set()
+        for n in non_ancestors:
+            if graph[n].intersection(child_layer):
+                parent_layer.add(n)
+        if parent_layer:
+            queue.append(parent_layer)
+    non_ancestors.add(node)
+    return graph.keys() - non_ancestors
+
+assert(getAncestors('b',{'a':{'b','c'}, 'b':set(),'c':set()}) == {'a'})
+assert(getAncestors('a',{'a':{'b','c'}, 'b':set(),'c':set()}) == set())
+assert(getAncestors('d',{'a':{'b','c'}, 'b':{'d'},'c':{'d'},'d':set()}) == {'a','b','c'})
+assert(getAncestors('d',{'a':{'b','c'}, 'b':{'d'},'c':{'d'},'d':set(),'e':set()}) == {'a','b','c'})
+
+def createGraphSlow(m, p, q, num_iterations):
+    d = {}
+    for i in range(num_iterations):
+        d['v'+str(i)] = set()
+        if m > len(d.keys()):
+            maybe_connect = d.keys()
+        else:
+            maybe_connect = random.sample(d.keys(), m)
+        for x in maybe_connect:
+            if random.random() < p:
+                #d['v'+str(i)].add(x)
+                d[x].add('v'+str(i))
+                for ancestor in getAncestors(x, d):
+                    if random.random() < q:
+                        #d['v'+str(i)].add(ancestor)
+                        d[ancestor].add('v'+str(i))
+    return d
+
+def createGraph(m, p, q, num_iterations):
+    d = nx.DiGraph()
+    for i in range(num_iterations):
+        d.add_node('v'+str(i))
+        if m >= d.number_of_nodes():
+            maybe_connect = d.nodes()
+        else:
+            maybe_connect = random.sample(d.nodes(), m)
+        for x in maybe_connect:
+            if random.random() < p:
+                d.add_edge(x, 'v'+str(i))
+                for ancestor in nx.algorithms.dag.ancestors(d,x):
+                    if random.random() < q:
+                        d.add_edge(ancestor, 'v'+str(i))
+    return {k:set(v) for k,v in nx.convert.to_dict_of_lists(d).items()}
+
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results file
+graph = createGraph(3,.5,.33,50)
+outfile = 'Images/genGraph.png'
+plotGraph(nx.DiGraph(graph), outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/genGraph.png]]
+
+#+BEGIN_SRC python :session :results output silent
+def plotDegreeDist(graph, in_or_out, outfile):
+   dist = getDegreeDist(graph, in_or_out)
+   plotLineGraph(sparseToDense(dist), outfile)
+#+END_SRC
+
+#+BEGIN_SRC python :session :results file
+outfile, in_or_out = 'genGraph_degree_dist.png', 'out'
+graph = createGraph2(3,.6,.33,1000)
+plotDegreeDist(graph, in_or_out, outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:genGraph_degree_dist.png]]
 
 ** DAG analysis'
 
