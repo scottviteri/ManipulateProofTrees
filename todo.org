@@ -19,3 +19,6 @@
 * DONE Speed up random graph generation
 * TODO Calculate Louvain modularity
   Get diff between real and nulls
+
+
+Separate GeoCoq export into stages -- up to tree level, then to dag level, then collective dag

@@ -296,6 +296,7 @@ outfile = './Images/'+theorem_name+'_DAG.png'
 
 
 ** Generate random DAG's with same degree distribution
+
 *** Generate random replica DAG's with same arities
 
 #+BEGIN_SRC python :session :results output silent
@@ -528,7 +529,6 @@ outfile
 
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_gen_DAG.png]]
-
 
 
 
@@ -770,7 +770,7 @@ exportDAGs(theorem_name, max_depth=1, num_replicas=5, mod_libs=False)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'four_color'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, mod_libs=False)
+exportDAGs(theorem_name, max_depth=4, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 **** Arith Library
@@ -785,27 +785,39 @@ exportLibDAG(library_name, max_depth=2, num_replicas=5, mod_libs=False)
 ***** Boilerplate
 
 #+BEGIN_SRC python :session :results output silent
-def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
-    if not os.path.exists('./ProofTrees/euclid_book_d'+str(depth)+'.txt'):
-        subprocess.call(['./make_euclid_theorems.sh', str(depth)])
-    with open('./ProofTrees/euclid_book_d'+str(depth)+'.txt','r') as f:
-        theorem_names = list(map(lambda x:"euclid."+x.strip(), f.readlines()))
-    if limit:
-        theorem_names = theorem_names[:limit]
-    theorems = {}
-    return {theorem_name: utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
-         for theorem_name in theorem_names}
+  def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
+      if not os.path.exists('./ProofTrees/euclid_book_d'+str(depth)+'.txt'):
+          subprocess.call(['./make_euclid_theorems.sh', str(depth)])
+      with open('./ProofTrees/euclid_book_d'+str(depth)+'.txt','r') as f:
+          theorem_names = list(map(lambda x:"euclid."+x.strip(), f.readlines()))
+      if limit:
+          theorem_names = theorem_names[:limit]
+      theorems = {}
+      return {theorem_name: utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+           for theorem_name in theorem_names}
 
-def getGeoCoqDAG(depth=2, mod_libs=False, limit=None):
-    theorem_dict = getGeoCoqTheorems(depth=depth, mod_libs=mod_libs, limit=limit)
-    theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
-    library_dag = toplistToDAG(theorem_tree)
-    return library_dag
+  def getGeoCoqDAG(depth=2, mod_libs=False, limit=None):
+      theorem_dict = getGeoCoqTheorems(depth=depth, mod_libs=mod_libs, limit=limit)
+      theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
+      library_dag = toplistToDAG(theorem_tree)
+      return library_dag
 
-def exportGeoCoqDAG(max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
-    for depth in range(1, max_depth+1):
-        dag = getGeoCoqDAG(depth=depth, mod_libs=mod_libs, limit=limit)
-        exportOrigAndReplicas(dag, 'euclid_book', num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
+  def exportGeoCoqDAG(max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
+      for depth in range(1, max_depth+1):
+          dag = getGeoCoqDAG(depth=depth, mod_libs=mod_libs, limit=limit)
+          exportOrigAndReplicas(dag, 'euclid_book', num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
+
+  def geoTreesToDAGs(depth):
+      euclid_theorems = list(filter(lambda x: x[:7] == 'euclid.', os.listdir('./ProofTrees')))
+      trees = map(lambda x: utils.theoremNameToLists(x, depth=depth), euclid_theorems)
+      dags = map(toplistToDAG, trees)
+      for theorem_name, dag in zip(euclid_theorems, dags):
+          outfile = './ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt'
+          if not os.path.exists('./ProofDAGs/'+theorem_name):
+              os.mkdir('./ProofDAGs/'+theorem_name)
+          with open(outfile,'w') as f:
+              json.dump({k:list(v) for k,v in dag.items()}, f)
+
 #+END_SRC
 
 ***** Export
@@ -813,6 +825,7 @@ def exportGeoCoqDAG(max_depth, num_replicas, limit=None, mod_libs=False, plot=Fa
 #+BEGIN_SRC python :session :results output silent
 exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
+
 
 
 ** DAG analysis
@@ -1049,6 +1062,8 @@ def plotOrigVRandModularity(theorem_name, depth, outfile, mod_libs=False):
 
 #+END_SRC
 
+***** sqrt2_not_rational
+
 #+BEGIN_SRC python :session :results file
 theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
 outfile = getModularitiesFileName(theorem_name, depth, mod_libs=mod_libs)
@@ -1058,6 +1073,28 @@ outfile
 
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_d2_modularities.png]]
+
+***** Elements
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
+outfile = getModularitiesFileName(theorem_name, depth, mod_libs=mod_libs)
+
+tree = json.loads(open('/home/scottviteri/Downloads/elements.txt','r').read())
+dag = {x[0]:set(x[1]) for x in tree}
+rand_dags = genComparableGraphs(dag, 5)
+
+orig_modularity = getModularity(dag)
+#print("orig modularity: ", orig_modularity)
+rand_modularities = list(map(getModularity, rand_dags))
+plotLineGraph([orig_modularity]+rand_modularities, outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d2_modularities.png]]
+
 
 
 ** DAG analysis'

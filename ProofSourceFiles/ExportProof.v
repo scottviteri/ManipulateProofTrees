@@ -2,5 +2,5 @@ Add LoadPath "~/LocalSoftware/CoqAST/plugin/src/".
 Add LoadPath "./ProofSourceFiles".
 Require Import PrintAST.ASTPlugin.
 
-Require Import CoRN.ftc.Taylor.
-PrintAST Taylor with depth 6 mod libs.
+Require Import GeoCoq.Elements.OriginalProofs.book1.
+PrintAST @proposition_48 with depth 1 mod libs.
