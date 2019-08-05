@@ -59,6 +59,11 @@
  Guillaume Allais, Jean-Marie Madiot (Coqtail/Arith/Lagrange_four_square)
  Install coqtail
 
+20. Primes (=1 mod 4) Equal the Sum of Two Squares
+ coq-mathcomp-sum-of-two-square
+  To be installed
+ ProofSourceFiles/sum2stest.v
+
 22. The Non-Denumerability of the Continuum
  C-CoRN team (in C-CoRN/reals/RealCount):
  ProofSourceFiles/reals_not_countable.v
@@ -69,14 +74,26 @@
  ProofSourceFiles/Alt_PI_eq.v
  Done
 
+27. Sum of the Angles of a Triangle
+ Boutry, Gries, Narboux (in GeoCoq/Meta_theory/Parallel_postulates/Euclid): 
+ ProofSourceFiles/equivalent_parallel_postulates_assuming_greenberg_s_postulate.v
+ Done
+
+30. The Ballot Problem
+ Jean-Marie Madiot (in file ballot.v) <-- https://madiot.fr/coq100/ 
+ ProofSourceFiles/bertrand_ballot.v
+ Done
+
 31. Ramsey's Theorem
  The Coq development team (Sets/Image) 
  ProofSourceFiles/Pigeonhole.v
  Done
 
-32. Four Color 
- Found source but cannot install due to missing dependencies
- I think this repo is probably not going to be able to work with a recent coq version
+32. The Four Color Problem
+ Able to install coq-fourcolor
+ Georges Gonthier, Benjamin Werner (coq-fourcolor library)
+ ProofSourceFiles/four_color.v
+ Done
 
 33. Fermat's Last Theorem
  Found user proof for n=4 in opam, but cannot install

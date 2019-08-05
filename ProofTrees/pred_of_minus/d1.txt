@@ -1,0 +1,1 @@
+(Definition Coq.Arith.Minus.pred_of_minus (Lambda gen_var_1 nat (App Coq.Init.Logic.eq_sym nat (App Coq.Init.Nat.sub gen_var_1 (App S O)) (App Coq.Init.Nat.pred gen_var_1) (App Coq.Arith.PeanoNat.Nat.sub_1_r gen_var_1)))) 
