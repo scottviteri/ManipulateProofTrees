@@ -1,1 +1,0 @@
-(Definition Coq.Arith.Le.le_Sn_le Coq.Arith.PeanoNat.Nat.lt_le_incl) 

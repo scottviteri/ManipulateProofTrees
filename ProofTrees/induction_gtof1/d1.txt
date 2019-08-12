@@ -1,1 +1,0 @@
-(Definition Coq.Arith.Wf_nat.induction_gtof1 (Lambda gen_var_1 (Sort Type) (Lambda gen_var_2 (Prod Anonymous gen_var_1 nat) (App Coq.Arith.Wf_nat.induction_ltof1 gen_var_1 gen_var_2)))) 

@@ -20,5 +20,8 @@
 * TODO Calculate Louvain modularity
   Get diff between real and nulls
 
-
-Separate GeoCoq export into stages -- up to tree level, then to dag level, then collective dag
+Compare mathematica graph to dag to generated
+ Got mathematica dependency graph file
+ Generate comparable graph
+ 
+ Import dependency graph file
