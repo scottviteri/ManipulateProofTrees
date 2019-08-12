@@ -64,10 +64,20 @@
   To be installed
  ProofSourceFiles/sum2stest.v
 
+21. Green's Theorem
+ No source provided
+
 22. The Non-Denumerability of the Continuum
  C-CoRN team (in C-CoRN/reals/RealCount):
  ProofSourceFiles/reals_not_countable.v
  Done
+
+23. Formula for Pythagorean Triples
+ David Delahaye (in coq-contribs/Fermat4/Pythagorean)
+
+
+24. The Undecidability of the Continuum Hypothesis
+ no source provided
 
 26. Leibniz’s Series for Pi
  Guillaume Allais (in standard library, Reals/Ratan)

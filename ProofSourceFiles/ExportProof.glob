@@ -1,5 +1,5 @@
-DIGEST fa45aaa55eb146e72b1fc8203371c564
+DIGEST a34192a9ea301b9d903d791bb109f875
 FExportProof
 R101:118 PrintAST.ASTPlugin <> <> lib
-R137:148 CoRN.ftc.FTC <> <> lib
-R160:163 CoRN.ftc.FTC <> FTC1 thm
+R137:155 fourcolor.fourcolor <> <> lib
+R167:176 fourcolor.fourcolor <> four_color thm

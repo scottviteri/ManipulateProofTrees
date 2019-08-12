@@ -1,0 +1,1 @@
+(Definition fourcolor.fourcolor.four_color (Lambda gen_var_1 model (LetIn gen_var_2 (App fourcolor.real.Real.model_structure gen_var_1) structure (Lambda gen_var_3 (App fourcolor.realplane.map gen_var_2) (App fourcolor.finitize.compactness_extension gen_var_1 (App S (App S (App S (App S O)))) (App fourcolor.fourcolor.four_color_finite gen_var_1) gen_var_3))))) 

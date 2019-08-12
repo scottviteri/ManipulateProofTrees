@@ -741,7 +741,7 @@ exportDAGs(theorem_name, max_depth=2, num_replicas=5,num_iterations=10000)
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'Liouville_theorem'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5,num_iterations=10000)
+exportDAGs(theorem_name, max_depth=2, num_replicas=5,num_iterations=10000)
 #+END_SRC
 
 **** The Non-Denumerability of the Continuum
