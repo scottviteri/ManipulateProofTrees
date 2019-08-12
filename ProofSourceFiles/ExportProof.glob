@@ -1,54 +1,5 @@
-DIGEST 7b81c6f3275467724a8f967049388604
+DIGEST fa45aaa55eb146e72b1fc8203371c564
 FExportProof
 R101:118 PrintAST.ASTPlugin <> <> lib
-ind 132:133 <> ev
-constr 154:157 <> ev_0
-constr 168:172 <> ev_SS
-R140:143 Coq.Init.Logic <> :type_scope:x_'->'_x not
-R137:139 Coq.Init.Datatypes <> nat ind
-R161:162 ExportProof <> ev ind
-R187:189 Coq.Init.Datatypes <> nat ind
-R196:199 Coq.Init.Logic <> :type_scope:x_'->'_x not
-R200:201 ExportProof <> ev ind
-R204:204 Coq.Init.Datatypes <> S constr
-R207:207 Coq.Init.Datatypes <> S constr
-R209:209 ExportProof <> n var
-R192:193 ExportProof <> ev ind
-R195:195 ExportProof <> n var
-prf 223:226 <> ev_2
-R230:231 ExportProof <> ev ind
-R250:254 ExportProof <> ev_SS constr
-R258:261 ExportProof <> ev_0 constr
-R250:254 ExportProof <> ev_SS constr
-R258:261 ExportProof <> ev_0 constr
-prf 408:420 <> add_even_even
-R438:440 Coq.Init.Datatypes <> nat ind
-R448:451 Coq.Init.Logic <> :type_scope:x_'->'_x not
-R456:459 Coq.Init.Logic <> :type_scope:x_'->'_x not
-R460:461 ExportProof <> ev ind
-R465:467 Coq.Init.Peano <> :nat_scope:x_'+'_x not
-R464:464 ExportProof <> m var
-R468:468 ExportProof <> n var
-R452:453 ExportProof <> ev ind
-R455:455 ExportProof <> n var
-R444:445 ExportProof <> ev ind
-R447:447 ExportProof <> m var
-R559:563 ExportProof <> ev_SS constr
-R559:563 ExportProof <> ev_SS constr
-prf 594:601 <> ev_4_alt
-R605:606 ExportProof <> ev ind
-R627:639 ExportProof <> add_even_even thm
-R646:649 ExportProof <> ev_2 thm
-R641:644 ExportProof <> ev_2 thm
-R627:639 ExportProof <> add_even_even thm
-R646:649 ExportProof <> ev_2 thm
-R641:644 ExportProof <> ev_2 thm
-prf 667:674 <> ev_8_alt
-R678:679 ExportProof <> ev ind
-R700:712 ExportProof <> add_even_even thm
-R723:730 ExportProof <> ev_4_alt thm
-R714:721 ExportProof <> ev_4_alt thm
-R700:712 ExportProof <> add_even_even thm
-R723:730 ExportProof <> ev_4_alt thm
-R714:721 ExportProof <> ev_4_alt thm
-R752:759 ExportProof <> ev_4_alt thm
+R137:148 CoRN.ftc.FTC <> <> lib
+R160:163 CoRN.ftc.FTC <> FTC1 thm

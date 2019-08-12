@@ -1219,7 +1219,7 @@ outfile
 Export Graph
 
 #+BEGIN_SRC python :session :results output silent
-graph = createGraph(3,.6,.33,100000)
+graph = createGraph(3,.6,.33,10000)
 exportGenGraph(graph)
 #+END_SRC
 
@@ -1247,7 +1247,7 @@ outfile
 outfile = 'Images/compare_elements_dags_pagerank.png'
 
 #g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
-g_comp = genComparableGraphInOut(g1, num_iterations=100000)
+g_comp = genComparableGraphInOut(g1, num_iterations=100)
 #g2 = importDAG('./ProofDAGs/gen_graph.txt')
 #g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
 
