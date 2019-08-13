@@ -11,8 +11,8 @@
  ProofSourceFiles/Q_countable.v
 
 4. Pythagorean Theorem
- Gabriel Braun (GeoCoq in Chapter 15)
- ProofSourceFiles/pythagoras.v
+ Gabriel Braun (GeoCoq.Tarski_dev.Ch15_lengths)
+ Having trouble with axioms in context
 
 5. Prime Number Theorem
  Source not provided
@@ -37,7 +37,6 @@
 
 11. The Infinitude of Primes
  #poizan42 (https://gist.github.com/poizan42/c7017e66f921783c0e52)
- #ProofSourceFiles/ex_prime_gt_ens.v
  Cannot use due to excess prints
 
 12. The Independence of the Parallel Postulate
@@ -98,7 +97,7 @@
 
 27. Sum of the Angles of a Triangle
  Boutry, Gries, Narboux (in GeoCoq/Meta_theory/Parallel_postulates/Euclid) 
- ProofSourceFiles/equivalent_parallel_postulates_assuming_greenberg_s_postulate.v
+ This directory of the library does not exist
 
 28. Pascal’s Hexagon Theorem
  Magaud and Narboux (in contribs/ProjectiveGeometry/plane/hexamys): 
@@ -138,7 +137,7 @@
 
 37. The Solution of a Cubic
  Frédéric Chardard (file on https://madiot.fr/coq100/)
- ProofSourceFiles/Cardan_Tartaglia.v
+ Has extra prints
 
 38. Arithmetic Mean/Geometric Mean
  Jean-Marie Madiot (file on https://madiot.fr/coq100/)
@@ -207,4 +206,167 @@
 56. The Hermite-Lindemann Transcendence Theorem
  Sophie Bernard (https://github.com/Sobernard/Lindemann)
  Cannot build source
+
+57. Heron’s Formula
+ Julien Narboux (in AreaMethod/pythagoras_difference_lemmas)
+ ProofSourceFiles/herron_qin.v
+
+58. Formula for the Number of Combinations
+ Pierre Letouzey (in contribs/FSets/PowerSet) 
+ Lemma itself missing from library
+
+59. The Laws of Large Numbers
+ Proof not provided
+
+60. Bezout’s Theorem
+ The Coq development team (in standard library, ZArith/Znumtheory) 
+ ProofSourceFiles/Zis_gcd_bezout.v
+
+61. Theorem of Ceva
+ Julien Narboux (in contribs/AreaMethod/examples_2) 
+ ProofSourceFiles/Ceva.v
+
+62. Fair Games Theorem
+ Proof not provided
+
+63. Cantor’s Theorem
+ Gilles Kahn, Gerard Huet (in standard library, Sets/Powerset.v) 
+ ProofSourceFiles/Strict_Rel_is_Strict_Included.v
+
+64. L’Hopital’s Rule
+ Sylvain Dailler (Coqtail) (in Coqtail/Reals/Hopital)
+ Cannot build coqtail
+
+65. Isosceles Triangle Theorem
+ GeoCoq team (GeoCoq in triangle.v) 
+ ProofSourceFiles/isosceles_conga.v
+
+66. Sum of a Geometric Series
+ Luís Cruz-Filipe (in C-CoRN/ftc/MoreFunSeries)
+ ProofSourceFiles/fun_power_series_conv_IR.v
+
+67. e is Transcendental
+ Sophie Bernard and Laurence Rideau (): 
+ Link not provided, possible to find
+
+68. Sum of an arithmetic series
+ many versions (e.g. file 68.sumarith.v): 
+ Error in source
+
+69. Greatest Common Divisor Algorithm
+ The Coq development team (in standard library, ZArith/Znumtheory): 
+
+70. The Perfect Number Theorem
+ Source not provided
+ ProofSourceFiles/Zgcd_is_gcd.v
+
+71. Order of a Subgroup
+ unknown (Laurent Théry?) (in mathcomp/fingroup/fingroup): 
+ ProofSourceFiles/Lagrange.v
+
+72. Sylow’s Theorem
+ Laurent Théry (in mathcomp/solvable/sylow) 
+ ProofSourceFiles/Sylow's_theorem.v
+
+73. Ascending or Descending Sequences
+ Florent Hivert (https://github.com/hivert/Coq-Combi) 
+ Trouble building source
+
+74. The Principle of Mathematical Induction
+ built-in (definition of natural numbers in Coq's standard library: Coq/Init/Datatypes) 
+ ProofSourceFiles/nat_ind.v 
+
+75. The Mean Value Theorem
+ Luís Cruz-Filipe (in C-CoRN/ftc/Rolle)
+ ProofSourceFiles/Law_of_the_Mean.v
+
+76. Fourier Series
+ Proof not provided
+
+77. Sum of kth powers
+ Proof not provided
+
+78. The Cauchy-Schwarz Inequality
+ Daniel de Rauglaudre (in roglo/cauchy_schwarz)
+ ProofSourceFiles/Cauchy_Schwarz_inequality.v
+
+79. The Intermediate Value Theorem
+ The Coq development team (in Coq's standard library: Reals/Rsqrt_def) 
+ ProofSourceFiles/IVT_cor.v
+
+80. The Fundamental Theorem of Arithmetic
+ unknown (Inria, Microsoft) (ssreflect/prime) 
+ ProofSourceFiles/divisors_correct.v
+
+81. Divergence of the Prime Reciprocal Series
+ Proof not provided
+
+82. Dissection of Cubes (J.E. Littlewood’s ‘elegant’ proof)
+ Proof not provided
+
+83. The Friendship Theorem
+ Proof not provided
+
+84. Morley’s Theorem
+ Frédérique Guilhot (on Github: HighSchoolGeometry/exercice_morley) 
+ Cannot install coq-high-school-geometry using coq 8.8.2
+
+85. Divisibility by 3 Rule
+ many versions (on https://madiot.fr/coq100/) 
+ ProofSourceFiles/div3.v
+
+86. Lebesgue Measure and Integration
+ Proof not provided
+
+87. Desargues’s Theorem
+ Julien Narboux (in contribs/AreaMethod/examples_2)
+ ProofSourceFiles/Desargues.v
+
+88. Derangements Formula
+ Proof not provided
+
+89. The Factor and Remainder Theorems
+ unknown ((c) Microsoft Corporation and Inria) (math-comp/algebra/polydiv) 
+ ProofSourceFiles/edivpP.v
+
+90. Stirling’s Formula
+ Coqtail team (Coqtail/Reals/RStirling) 
+ Cannot build coqtail 
+
+91. The Triangle Inequality
+ The Coq Development Team (in standard library, Reals/Rgeom) 
+ ProofSourceFiles/triangle.v
+
+92. Pick’s Theorem
+ Proof not provided
+
+93. The Birthday Problem
+ Jean-Marie Madiot (https://madiot.fr/coq100/#25) 
+ ProofSourceFiles/birthday_paradox.v
+
+94. The Law of Cosines
+ Frédérique Guilhot (in contribs/HighSchoolGeometry/metrique_triangle)
+ Cannot install coq-high-school-geometry using coq 8.8.2
+
+95. Ptolemy’s Theorem
+ Tuan Minh Pham (link to the publication on HAL)
+ Unclear if source has .v file
+
+96. Principle of Inclusion/Exclusion
+ Jean-Marie Madiot (on https://madiot.fr/coq100/)
+ ProofSourceFiles/inclusion_exclusion.v
+
+97. Cramer’s Rule
+ Georges Gonthier et al. (coqfinitgroup/matrix)
+ Cannot find this library
+
+98. Bertrand’s Postulate
+ Laurent Théry (in contribs/Bertrand/Bertrand) 
+ ProofSourceFiles/Bertrand.v
+
+99. Buffon Needle Problem
+ No proof provided
+
+100. Descartes Rule of Signs
+ No proof provided
 

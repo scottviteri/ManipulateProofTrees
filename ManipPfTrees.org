@@ -385,48 +385,8 @@ def checkTopOrder(top_order, graph):
 #assert(checkTopOrder(nx.topological_sort(nx.DiGraph(ev_8_dag)), ev_8_dag))
 #assert(all([checkTopOrder(randomTopSort(ev_8_dag), ev_8_dag) for _ in range(100)]))
 
-
 def flatten(lst_of_lsts):
     return functools.reduce(lambda x,y: x+y, lst_of_lsts, [])
-
-def genComparableGraph(theorem_dag, test=False):
-    #preprocessing
-    theorem_nodes = list(theorem_dag.keys())
-    name_to_num = {name: num for num, name in enumerate(theorem_nodes)}
-    num_to_name = {num: name for num, name in enumerate(theorem_nodes)}
-    outgoing_edges = {n: len(theorem_dag[num_to_name[n]])
-                         for n in range(len(theorem_nodes))}
-    #create random connections that match arities
-    top_sort = randomTopSort(theorem_dag)
-    if test:
-        assert(checkTopOrder(top_sort, theorem_dag)) #errors in here
-        assert(outgoing_edges[name_to_num[top_sort[-1]]] == 0)
-    new_nodes = [name_to_num[name] for name in top_sort]
-    new_graph = {n:set() for n in range(len(theorem_nodes))}
-    #first pass
-    for i in range(1,len(new_nodes)):
-        current_node = new_nodes[i]
-        connection_options = flatten([[(parent, edge) for edge in range(outgoing_edges[parent])]
-                                        for parent in new_nodes[:i]])
-        parent, edge = random.choice(connection_options)
-        new_graph[parent].add(current_node)
-        outgoing_edges[parent] -= 1
-    #leftover edges
-    for i in range(len(new_nodes)):
-        current_node = new_nodes[i]
-        outgoing_left = outgoing_edges[current_node]
-        connection_options = new_nodes[i+1:]
-        #print(num_to_name[current_node], outgoing_left)
-        if outgoing_left <= len(connection_options):
-            children = random.sample(connection_options, outgoing_left)
-        else:
-            children = {random.choice(connection_options) for _ in range(outgoing_left)}
-        new_graph[current_node] = new_graph[current_node].union(children)
-    return {str(x):set(map(str,y)) for x,y in new_graph.items()}
-
-
-print(ev_4_dag)
-print(genComparableGraph(ev_4_dag))
 
 #+END_SRC
 
@@ -451,7 +411,7 @@ flip if still dag
 
 #+BEGIN_SRC python :session :results output silent
 
-  def genComparableGraphInOut(theorem_dag, num_iterations):
+  def genComparableGraph(theorem_dag, num_iterations):
       dag = copy.deepcopy(theorem_dag)
       num_nodes = len(dag)
       top_sort = list(nx.topological_sort(nx.DiGraph(dag)))
@@ -477,6 +437,9 @@ flip if still dag
       assert(nx.is_directed_acyclic_graph(nx.DiGraph(dag)))
       return dag
 
+def genComparableGraphs(theorem_dag, num_iterations, num_graphs):
+    return [genComparableGraph(theorem_dag, num_iterations) for _ in range(num_graphs)]
+
 #+END_SRC
 
 *** Plot generated replica DAG's
@@ -485,7 +448,7 @@ flip if still dag
 #+BEGIN_SRC python :session :results file
 outfile = './Images/ev_4_gen_DAG.png'
 ev_4_dag = toplistToDAG(utils.ev_4_tree,'ev_4')
-gen_ev_4_dag = genComparableGraphInOut(ev_4_dag, num_iterations=100)
+gen_ev_4_dag = genComparableGraph(ev_4_dag, num_iterations=100)
 plotGraphs(nx.DiGraph(ev_4_dag),
                      nx.DiGraph(gen_ev_4_dag), outfile, label=True, figsize=(6,6))
 outfile
@@ -499,7 +462,7 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = './Images/ev_8_gen_DAG.png'
 ev_8_dag = toplistToDAG(utils.ev_8_tree,'ev_8')
-gen_ev_8_dag = genComparableGraphInOut(ev_8_dag,num_iterations=10)
+gen_ev_8_dag = genComparableGraph(ev_8_dag,num_iterations=10)
 plotGraphs(nx.DiGraph(ev_8_dag),
                      nx.DiGraph(gen_ev_8_dag), outfile, label=True, figsize=(8,8))
 './Images/ev_8_gen_DAG.png'
@@ -530,7 +493,7 @@ theorem_name = 'sqrt2_not_rational'
 outfile = './Images/'+theorem_name+'_gen_DAG.png'
 tree = utils.theoremNameToLists(theorem_name)
 dag = toplistToDAG(utils.sqrt2_tree, 'sqrt2_not_rational')
-gen_dag = genComparableGraphInOut(dag, num_iterations=100) #P52 in values but not in keys
+gen_dag = genComparableGraph(dag, num_iterations=100) #P52 in values but not in keys
 plotGraphs(nx.DiGraph(dag),
            nx.DiGraph(gen_dag), outfile, label=False, figsize=(8,8))
 outfile
@@ -540,52 +503,11 @@ outfile
 [[file:./Images/sqrt2_not_rational_gen_DAG.png]]
 
 
-
 *** Export multiple replica DAG's
 **** Utils
 
 #+BEGIN_SRC python :session :results output silent
 
-def genComparableGraphs(theorem_dag, num_graphs, test=False):
-    #preprocessing
-    theorem_nodes = list(theorem_dag.keys())
-    name_to_num = {name: num for num, name in enumerate(theorem_nodes)}
-    num_to_name = {num: name for num, name in enumerate(theorem_nodes)}
-    original_outgoing_edges = {n: len(theorem_dag[num_to_name[n]])
-                                 for n in range(len(theorem_nodes))}
-    #create random connections that match arities
-    new_graphs = []
-    for _ in range(num_graphs):
-        top_sort = randomTopSort(theorem_dag)
-        outgoing_edges = copy.deepcopy(original_outgoing_edges)
-        if test:
-            assert(checkTopOrder(top_sort, theorem_dag)) #errors in here
-            assert(outgoing_edges[name_to_num[top_sort[-1]]] == 0)
-        new_nodes = [name_to_num[name] for name in top_sort]
-        new_graph = {n:set() for n in range(len(theorem_nodes))}
-        #first pass
-        for i in range(1,len(new_nodes)):
-            current_node = new_nodes[i]
-            #connection_options = flatten([[(parent, edge) for edge in range(outgoing_edges[parent])]
-            #                                for parent in new_nodes[:i]])
-            parent = new_nodes[random.choice(range(i))]
-            while outgoing_edges[parent] == 0:
-                parent = new_nodes[random.choice(range(i))]
-            new_graph[parent].add(current_node)
-            outgoing_edges[parent] -= 1
-        #leftover edges
-        for i in range(len(new_nodes)):
-            current_node = new_nodes[i]
-            outgoing_left = outgoing_edges[current_node]
-            connection_options = new_nodes[i+1:]
-            #print(num_to_name[current_node], outgoing_left)
-            children = {random.choice(connection_options) for _ in range(outgoing_left)}
-            new_graph[current_node] = new_graph[current_node].union(children)
-        new_graphs.append(new_graph)
-    return new_graphs
-
-#def genComparableGraphs2(theorem_dag, num_graphs):
-#    return [genComparableGraph2(theorem_dag) for _ in range(num_graphs)]
 
 def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, num_iterations, depth=2, mod_libs=False):
     outfolder = './ProofDAGs/'+theorem_name+'/'
@@ -594,17 +516,16 @@ def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, num_iteration
     orig_out = outfolder+'d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
     with open(orig_out,'w') as f:
         json.dump({k:list(v) for k,v in theorem_dag.items()}, f)
-    gen_dags = [genComparableGraphInOut(theorem_dag, num_iterations=num_iterations) for _ in range(num_replicas)]
-    #genComparableGraphs(theorem_dag, num_replicas)
+    gen_dags = genComparableGraphs(theorem_dag, num_iterations, num_replicas)
     for i,g in enumerate(gen_dags):
         replica_out = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
         with open(replica_out, 'w') as f:
             json.dump({k:list(v) for k,v in g.items()}, f)
 
-def exportReplicas(theorem_name, depth, num_replicas, mod_libs=False):
+def exportReplicas(theorem_name, depth, num_replicas, num_iterations, mod_libs=False):
     outfolder = './ProofDAGs/'+theorem_name+'/'
     theorem_dag = importOrigDAG(theorem_name, depth)
-    gen_dags = genComparableGraphs(theorem_dag, num_replicas)
+    gen_dags = genComparableGraphs(theorem_dag, num_iterations, num_replicas)
     for i,g in enumerate(gen_dags):
         gen_file = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
         with open(gen_file, 'w') as f:
@@ -657,6 +578,74 @@ def geoTreesToDAGs(depth):
 
 #+END_SRC
 
+**** Export All
+
+#+BEGIN_SRC python :session :results output silent
+
+theorem_names = [
+  "FTA",
+  "Q_countable",
+  "Goedel'sIncompleteness1st",
+  "Quadratic_reciprocity",
+  "Euler_exp_totient",
+  "Euler_Poincare_criterion",
+  "FTC1",
+  "Liouville_theorem",
+  "sum_of_two_squares",
+  "reals_not_countable",
+  "pytha_thm3",
+  "CSB",
+  "Alt_PI_eq",
+  "is_hexamy",
+  "bertrand_ballot",
+  "Pigeonhole",
+  "four_color",
+  "Taylor",
+  "binomial",
+  "Cayley_Hamilton",
+  "card_powerset",
+  "konigsberg_bridges",
+  "herron_qin",
+  "Zis_gcd_bezout",
+  "Ceva",
+  "Strict_Rel_is_Strict_Included",
+  "isosceles_conga",
+  "fun_power_series_conv_IR",
+  "Zgcd_is_gcd",
+  "Lagrange",
+  "Sylow's_theorem",
+  "nat_ind",
+  "Law_of_the_Mean",
+  "Cauchy_Schwarz_inequality",
+  "IVT_cor",
+  "divisors_correct",
+  "div3",
+  "Desargues",
+  "edivpP",
+  "triangle",
+  "birthday_paradox",
+  "inclusion_exclusion",
+  "Bertrand"
+]
+
+#max_depths = [4,3,2,2,2,3,3,2,2,1,None, \
+#              None,1, None,None, 2,1,4,1,None,None,None, None,None]
+
+max_depths = [1 for x in theorem_names]
+for (theorem_name, max_depth) in zip(theorem_names[20:], max_depths[20:]):
+  depth = max_depth if max_depth else 1
+  exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
+
+#exportDAGs("pythagoras", max_depth=1, num_replicas=5, num_iterations=10000)
+#
+#library_names = ['Arith']
+#for library_name in library_names:
+#  exportLibDAG(library_name, max_depth=1, num_replicas=5)
+#
+#exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
+
+#+END_SRC
+
 **** ev_4
 
 #+BEGIN_SRC python :session :results output silent
@@ -679,166 +668,6 @@ exportDAGs(theorem_name, max_depth=5, num_replicas=5, num_iterations=10000)
 #+END_SRC
 
 
-**** Export Multiple
-
-#+BEGIN_SRC python :session :results output silent
-theorem_names = [
-  "FTA",
-  "Q_countable",
-  "pythagoras",
-  "Goedel\'sIncompleteness1st",
-  "Quadratic_reciprocity",
-  "Euler_exp_totient",
-  "Euler_Poincare_criterion",
-  "FTC1",
-  "Liouville_theorem",
-  "sum_of_two_squares",
-  "reals_not_countable",
-  "pytha_thm3",
-  "CSB",
-  "Alt_PI_eq",
-  "equivalent_parallel_postulates_assuming_greenberg_s_postulate",
-  "is_hexamy",
-  "bertrand_ballot",
-  "Pigeonhole",
-  "four_color",
-  "Taylor",
-  "Cardan_Tartaglia",
-  "binomial",
-  "Cayley_Hamilton",
-  "card_powerset",
-  "konigsberg_bridges"
-]
-
-max_depths = [4,None,2,None,2,3,None,2,None,1,None, \
-              None,1, None,None, 2,1,4,1,None,None,None, None,None]
-
-for (theorem_name, max_depth) in zip(theorem_names, max_depths):
-  depth = max_depth if max_depth else 1
-  exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
-
-library_names = ['Arith']
-for library_name in library_names:
-  exportLibDAG(library_name, max_depth=1, num_replicas=5)
-
-#exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
-
-#+END_SRC
-
-**** sqrt2 not rational
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'sqrt2_not_rational'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** birthday_paradox
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'birthday_paradox'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** bertrand_ballot
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'bertrand_ballot'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** FTA
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'FTA'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5,num_iterations=10000)
-#+END_SRC
-
-**** Pythagorean Theorem
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'pythagoras'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5,num_iterations=10000)
-#+END_SRC
-
-**** Quadratic_reciprocity
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Quadratic_reciprocity'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** Euler_exp_totient
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Euler_exp_totient'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** FTC (Fundamental Theorem of Integral Calculus)
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'FTC1'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5,num_iterations=10000)
-#+END_SRC
-
-**** Liouville's Theorem and the Construction of Trancendental Numbers
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Liouville_theorem'
-exportDAGs(theorem_name, max_depth=2, num_replicas=5,num_iterations=10000)
-#+END_SRC
-
-**** The Non-Denumerability of the Continuum
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'reals_not_countable'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** Leibniz's Series for Pi
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Alt_PI_eq'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** Pigeonhole
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Pigeonhole'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** Taylor's Theorem
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'Taylor'
-exportDAGs(theorem_name, max_depth=1, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-**** Four Color Theorem
-
-#+BEGIN_SRC python :session :results output silent
-theorem_name = 'four_color'
-exportDAGs(theorem_name, max_depth=4, num_replicas=5, num_iterations=10000)
-#+END_SRC
-
-#+END_SRC
-
-
-
-**** Arith Library
-
-#+BEGIN_SRC python :session :results output silent
-library_name = 'Arith'
-exportLibDAG(library_name, max_depth=2, num_replicas=5, mod_libs=False)
-#+END_SRC
-
-**** GeoCoq Library
-
-#+BEGIN_SRC python :session :results output silent
-exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
-#+END_SRC
 
 
 
@@ -1255,7 +1084,7 @@ outfile
 outfile = 'Images/compare_elements_dags_pagerank.png'
 
 #g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
-g_comp = genComparableGraphInOut(g1, num_iterations=100)
+g_comp = genComparableGraph(g1, num_iterations=100)
 #g2 = importDAG('./ProofDAGs/gen_graph.txt')
 #g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
 

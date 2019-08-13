@@ -1,5 +1,0 @@
-DIGEST af9f3522b44ee19a183ac3d4e050e5de
-FExportProof
-R101:118 PrintAST.ASTPlugin <> <> lib
-R137:168 ProjectiveGeometry.Plane.hexamys <> <> lib
-R180:188 ProjectiveGeometry.Plane.hexamys <> is_hexamy def

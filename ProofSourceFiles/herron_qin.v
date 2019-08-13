@@ -1,0 +1,1 @@
+Require Import AreaMethod.pythagoras_difference_lemmas.
