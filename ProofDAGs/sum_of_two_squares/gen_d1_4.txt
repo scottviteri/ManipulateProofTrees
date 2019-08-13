@@ -1,0 +1,1 @@
+{"gen_var_1": [], "Z": [], "ex": [], "gen_var_2": [], "gen_var_3": [], "eq": [], "Coq.ZArith.BinIntDef.Z.add": [], "Coq.ZArith.BinIntDef.Z.mul": [], "App1": ["gen_var_1"], "App2": ["Coq.ZArith.BinIntDef.Z.mul"], "App3": ["App1"], "App4": ["App2"], "Lambda1": ["ex"], "App5": ["gen_var_2"], "Lambda2": ["App4"], "App6": ["Lambda2"], "Lambda3": ["App6"]}

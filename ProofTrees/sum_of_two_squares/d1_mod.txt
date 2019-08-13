@@ -1,0 +1,1 @@
+(Definition SumOfTwoSquare.TwoSquares.sum_of_two_squares (Lambda gen_var_1 Z (App ex Z (Lambda gen_var_2 Z (App ex Z (Lambda gen_var_3 Z (App eq Z gen_var_1 (App Coq.ZArith.BinIntDef.Z.add (App Coq.ZArith.BinIntDef.Z.mul gen_var_2 gen_var_2) (App Coq.ZArith.BinIntDef.Z.mul gen_var_3 gen_var_3))))))))) 

@@ -1,5 +1,7 @@
-DIGEST a34192a9ea301b9d903d791bb109f875
+DIGEST d1e25e0e9911f520eb5681e9ca24a8b3
 FExportProof
 R101:118 PrintAST.ASTPlugin <> <> lib
-R137:155 fourcolor.fourcolor <> <> lib
-R167:176 fourcolor.fourcolor <> four_color thm
+R154:157 Coq.Unicode.Utf8 <> <> lib
+R159:164 Coq.QArith.QArith <> <> lib
+R166:171 Coq.Numbers.Natural.Peano.NPeano <> <> lib
+R173:179 Coq.Sorting.Sorting <> <> lib

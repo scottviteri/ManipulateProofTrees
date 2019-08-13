@@ -546,43 +546,6 @@ outfile
 
 #+BEGIN_SRC python :session :results output silent
 
-def genComparableGraphsSlow(theorem_dag, num_graphs, test=False):
-    #prep
-    theorem_nodes = list(theorem_dag.keys())
-    name_to_num = {name: num for num, name in enumerate(theorem_nodes)}
-    num_to_name = {num: name for num, name in enumerate(theorem_nodes)}
-    original_outgoing_edges = {n: len(theorem_dag[num_to_name[n]])
-                                 for n in range(len(theorem_nodes))}
-    #create random connections that match arities
-    new_graphs = []
-    for _ in range(num_graphs):
-        top_sort = randomTopSort(theorem_dag)
-        outgoing_edges = copy.deepcopy(original_outgoing_edges)
-        if test:
-            assert(checkTopOrder(top_sort, theorem_dag)) #errors in here
-            assert(outgoing_edges[name_to_num[top_sort[-1]]] == 0)
-        new_nodes = [name_to_num[name] for name in top_sort]
-        new_graph = {n:set() for n in range(len(theorem_nodes))}
-        #first pass
-        for i in range(1,len(new_nodes)):
-            current_node = new_nodes[i]
-            connection_options = flatten([[(parent, edge) for edge in range(outgoing_edges[parent])]
-                                            for parent in new_nodes[:i]])
-            parent, edge = random.choice(connection_options)
-            new_graph[parent].add(current_node)
-            outgoing_edges[parent] -= 1
-        #leftover edges
-        for i in range(len(new_nodes)):
-            current_node = new_nodes[i]
-            outgoing_left = outgoing_edges[current_node]
-            connection_options = new_nodes[i+1:]
-            #print(num_to_name[current_node], outgoing_left)
-            children = {random.choice(connection_options) for _ in range(outgoing_left)}
-            new_graph[current_node] = new_graph[current_node].union(children)
-        new_graphs.append(new_graph)
-    return new_graphs
-
-
 def genComparableGraphs(theorem_dag, num_graphs, test=False):
     #preprocessing
     theorem_nodes = list(theorem_dag.keys())
@@ -681,11 +644,51 @@ theorem_name = 'ev_8_alt'
 exportDAGs(theorem_name, max_depth=5, num_replicas=5, num_iterations=10000)
 #+END_SRC
 
-**** sqrt2_not_rational
+
+**** Export Multiple
+
+#+BEGIN_SRC python :session :results output silent
+theorem_names = [
+  "FTA",
+  "Q_countable",
+  "pythagoras",
+  "Goedel\'sIncompleteness1st",
+  "Quadratic_reciprocity",
+  "Euler_exp_totient",
+  "Euler_Poincare_criterion",
+  "FTC1",
+  "Liouville_theorem",
+  "sum_of_two_squares",
+  "reals_not_countable",
+  "pytha_thm3",
+  "CSB",
+  "Alt_PI_eq",
+  "equivalent_parallel_postulates_assuming_greenberg_s_postulate",
+  "bertrand_ballot",
+  "Pigeonhole",
+  "four_color",
+  "Taylor",
+  "Cardan_Tartaglia",
+  "puiseux_series_algeb_closed",
+  "binomial",
+  "Cayley_Hamilton",
+  "card_powerset",
+  "konigsberg_bridges"
+]
+
+#"is_hexamy",
+
+for theorem_name in theorem_names:
+  exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
+#exportDAGs(theorem_names[20], max_depth=1, num_replicas=5, num_iterations=10000)
+
+#+END_SRC
+
+**** sqrt2 not rational
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'sqrt2_not_rational'
-exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
+exportDAGs(theorem_name, max_depth=1, num_replicas=5, num_iterations=10000)
 #+END_SRC
 
 **** birthday_paradox
@@ -778,6 +781,10 @@ exportDAGs(theorem_name, max_depth=1, num_replicas=5, num_iterations=10000)
 theorem_name = 'four_color'
 exportDAGs(theorem_name, max_depth=4, num_replicas=5, num_iterations=10000)
 #+END_SRC
+
+#+END_SRC
+
+
 
 **** Arith Library
 

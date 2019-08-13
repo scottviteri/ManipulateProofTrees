@@ -1,115 +1,210 @@
-1. Irrationality of sqrt2 (QArithSternBrocot.sqrt2)
+1. The Irrationality of the Square Root of 2
+ https://github.com/coq-community/qarith-stern-brocot/blob/master/sqrt2.v
  ProofsSourceFiles/sqrt2_not_rational.v
- Done
 
 2. Fundamental Theorem of Algebra 
  Herman Geuvers et al. (in C-CoRN/fta/FTA)
  ProofSourceFiles/FTA.v
- Done
 
 3. The Denumerability of the Rational Numbers
- Milad Niqui (in contribs/QArithSternBrocot/Q_denumerable) 
-  Old dependencies
  Daniel Schepler (in contribs/ZornsLemma/CountableTypes)
-  Yet to try
+ ProofSourceFiles/Q_countable.v
 
 4. Pythagorean Theorem
  Gabriel Braun (GeoCoq in Chapter 15)
  ProofSourceFiles/pythagoras.v
- Done
 
+5. Prime Number Theorem
+ Source not provided
 
 6. Godel's Incompleteness Theorem
- Building locally
- Out of date
-
+ Russell O'Connor (in contribs/Goedel/goedel1) 
+ ProofSourceFiles/Goedel'sIncompleteness1st.v
 
 7. Law of Quadratic Reciprocity
  Nathanaël Courant: https://github.com/Ekdohibs/coq-proofs/tree/master/reciprocity
  ProofSourceFiles/Quadratic_reciprocity.v
- Done 
+
+8. The Impossibility of Trisecting the Angle and Doubling the Cube
+ Source not provided
+
+9. The Area of a Circle
+ Source not provided
 
 10. Euler's Generalization of Fermat's Little Theorem
  Laurent Théry (in mathcomp/solvable/cyclic.v)
  ProofSourceFiles/Euler_exp_totient.v
- Done
+
+11. The Infinitude of Primes
+ #poizan42 (https://gist.github.com/poizan42/c7017e66f921783c0e52)
+ #ProofSourceFiles/ex_prime_gt_ens.v
+ Cannot use due to excess prints
+
+12. The Independence of the Parallel Postulate
+ Source not provided
 
 13. Polyhedron Formula
- Dead link
+ Jean-François Dufourd (in contribs/EulerFormula/Euler3)
+ ProofSourceFiles/Euler_Poincare_criterion.v
 
 14. Euler’s Summation of 1 + (1/2)^2 + (1/3)^2 + ….
  Jean-Marie Madiot (in Coqtail/Reals/Rzeta2): 
- Have to get coqtail
+ Cannot build coqtail
 
 15. Fundamental Theorem of Integral Calculus
  Luís Cruz-Filipe (in C-CoRN/ftc/FTC)  
- ProofSourceFiles/FTC.v
- <-- all extractions same here for some reason
+ ProofSourceFiles/FTC1.v
+
+16. Insolvability of General Higher Degree Equations
+ Source not provided
 
 17. DeMoivre’s Theorem
  Coqtail team (in Coqtail/Complex/Cexp): 
- Have to get coqtail
+ Cannot build coqtail
 
 18. Liouville’s Theorem and the Construction of Trancendental Numbers
  Valentin Blot (CoRN/Liouville/Liouville_theorem)
  ProofSourceFiles/Liouville_theorem.v
- Done
 
 19. Four Squares Theorem
  Guillaume Allais, Jean-Marie Madiot (Coqtail/Arith/Lagrange_four_square)
- Install coqtail
+ Cannot build coqtail
 
 20. Primes (=1 mod 4) Equal the Sum of Two Squares
- coq-mathcomp-sum-of-two-square
-  To be installed
- ProofSourceFiles/sum2stest.v
+ Laurent Théry (in contribs/sum-of-two-square/TwoSquares) 
+ ProofSourceFiles/sum_of_two_squares.v
 
 21. Green's Theorem
  No source provided
 
 22. The Non-Denumerability of the Continuum
- C-CoRN team (in C-CoRN/reals/RealCount):
+ C-CoRN team (in C-CoRN/reals/RealCount)
  ProofSourceFiles/reals_not_countable.v
- Done
 
 23. Formula for Pythagorean Triples
- David Delahaye (in coq-contribs/Fermat4/Pythagorean)
-
+ David Delahaye (in contribs/Fermat4/Pythagorean)
+ ProofSourceFiles/pytha_thm3.v
 
 24. The Undecidability of the Continuum Hypothesis
  no source provided
 
+25. Schroeder-Bernstein Theorem
+ Daniel Schepler (in contribs/ZornsLemma/CSB) 
+ ProofSourceFiles/CSB.v
+
 26. Leibniz’s Series for Pi
  Guillaume Allais (in standard library, Reals/Ratan)
  ProofSourceFiles/Alt_PI_eq.v
- Done
 
 27. Sum of the Angles of a Triangle
- Boutry, Gries, Narboux (in GeoCoq/Meta_theory/Parallel_postulates/Euclid): 
+ Boutry, Gries, Narboux (in GeoCoq/Meta_theory/Parallel_postulates/Euclid) 
  ProofSourceFiles/equivalent_parallel_postulates_assuming_greenberg_s_postulate.v
- Done
+
+28. Pascal’s Hexagon Theorem
+ Magaud and Narboux (in contribs/ProjectiveGeometry/plane/hexamys): 
+ ProofSourceFiles/is_hexamy.v
+
+29. Feuerbach’s Theorem
+ CertiGeo team, marelle project (in CertiGeo/feuerbach): 
+ Cannot find code
 
 30. The Ballot Problem
- Jean-Marie Madiot (in file ballot.v) <-- https://madiot.fr/coq100/ 
+ Jean-Marie Madiot (on https://madiot.fr/coq100/)
  ProofSourceFiles/bertrand_ballot.v
- Done
 
 31. Ramsey's Theorem
  The Coq development team (Sets/Image) 
  ProofSourceFiles/Pigeonhole.v
- Done
 
 32. The Four Color Problem
  Able to install coq-fourcolor
  Georges Gonthier, Benjamin Werner (coq-fourcolor library)
  ProofSourceFiles/four_color.v
- Done
 
 33. Fermat's Last Theorem
- Found user proof for n=4 in opam, but cannot install
+ coq-fermat4
+ ProofSoruceFiles/fermat4.v
+
+34. Divergence of the Harmonic Series
+ Coqtail (Coqtail/Reals/Rseries/Rseries_RiemannInt): 
+ Cannot build coqtail
 
 35. Taylor's Theorem
  Luís Cruz-Filipe (in C-CoRN/ftc/Taylor)
  ProofSourceFiles/Taylor.v
- Done
+
+36. Brouwer Fixed Point Theorem
+ Could not find source
+
+37. The Solution of a Cubic
+ Frédéric Chardard (file on https://madiot.fr/coq100/)
+ ProofSourceFiles/Cardan_Tartaglia.v
+
+38. Arithmetic Mean/Geometric Mean
+ Jean-Marie Madiot (file on https://madiot.fr/coq100/)
+ Error while checking file
+
+39. Solutions to Pell’s Equation
+ Source not provided
+
+40. Minkowski’s Fundamental Theorem
+ Source not provided
+
+41. Puiseux’s Theorem
+ Daniel de Rauglaudre (https://scm.gforge.inria.fr/anonscm/gitweb?p=puiseuxth/puiseuxth.git;a=blob;f=coq/Puiseux.v;h=af46c812b5cb9527d82570db34e5a8bdd703fceb;hb=HEAD#l1)
+ ProofSourceFiles/puiseux_series_algeb_closed.v
+
+42. Sum of the Reciprocals of the Triangular Numbers
+ Coqtail (in Coqtail/Reals/Triangular)
+ Cannot build coqtail
+
+43. The Isoperimetric Theorem
+ Source not provided
+
+44. The Binomial Theorem
+ The Coq development team (in standard library, Reals/Binomial): 
+ ProofSourceFiles/binomial.v
+
+45. The Partition Theorem
+ Source not provided
+
+46. The Solution of the General Quartic Equation
+ Source not provided
+
+47. The Central Limit Theorem
+ Source not provided
+
+48. Dirichlet’s Theorem
+ Source not provided
+
+49. The Cayley-Hamilton Theorem
+ Sidi Ould Biha (in mathcomp/algebra/mxpoly) 
+ ProofSourceFiles/Cayley_Hamilton.v
+
+50. The Number of Platonic Solids
+ Source not provided
+
+51. Wilson’s Theorem
+ Laurent Théry (in contribs/SumOfTwoSquare/Wilson): 
+ Having trouble importing from SumOfTwoSquare
+
+52. The Number of Subsets of a Set
+ unknown (Inria, Microsoft) (in mathcomp/ssreflect/finset): 
+ ProofSourceFiles/card_powerset.v
+
+53. Pi is Trancendental
+ Sophie Bernard and Laurence Rideau (): 
+ Could not find proof
+
+54. Konigsberg Bridges Problem
+ Jean-Marie Madiot (file on https://madiot.fr/coq100/)
+ ProofSourceFiles/konigsberg_bridges.v
+
+55. Product of Segments of Chords
+ Loïc Pottier, Benjamin Grégoire, Laurent Théry (in CertiGeo/chords) 
+ Cannot find CertiGeo
+
+56. The Hermite-Lindemann Transcendence Theorem
+ Sophie Bernard (https://github.com/Sobernard/Lindemann)
+ Cannot build source
 
