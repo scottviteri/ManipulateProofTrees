@@ -228,4 +228,4 @@ Proof.
   all: t E5 Pl5.
   all: t E6 Pl6.
 Qed.
-PrintAST konigsberg_bridges with depth 2.
+PrintAST konigsberg_bridges with depth 6 mod libs.
