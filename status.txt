@@ -152,7 +152,7 @@
 
 41. Puiseux’s Theorem
  Daniel de Rauglaudre (https://scm.gforge.inria.fr/anonscm/gitweb?p=puiseuxth/puiseuxth.git;a=blob;f=coq/Puiseux.v;h=af46c812b5cb9527d82570db34e5a8bdd703fceb;hb=HEAD#l1)
- ProofSourceFiles/puiseux_series_algeb_closed.v
+ Broken dependency
 
 42. Sum of the Reciprocals of the Triangular Numbers
  Coqtail (in Coqtail/Reals/Triangular)

@@ -611,6 +611,7 @@ def exportReplicas(theorem_name, depth, num_replicas, mod_libs=False):
             json.dump({k:list(v) for k,v in g.items()}, f)
 
 def exportDAGs(theorem_name, max_depth, num_replicas, num_iterations, mod_libs=False):
+    print('theorem_name:', theorem_name)
     for depth in range(1, max_depth+1):
         tree = utils.theoremNameToLists(theorem_name, depth, mod_libs=mod_libs)
         dag = toplistToDAG(tree, depth=depth)
@@ -620,6 +621,39 @@ def exportLibDAG(library_name, max_depth, num_replicas, num_iterations, limit=No
     for depth in range(1, max_depth+1):
         dag = libNameToDAG(library_name, depth=depth, mod_libs=mod_libs, limit=limit)
         exportOrigAndReplicas(dag, library_name, num_replicas, depth=depth, mod_libs=mod_libs)
+
+def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
+    if not os.path.exists('./ProofTrees/euclid_book_d'+str(depth)+'.txt'):
+        subprocess.call(['./make_euclid_theorems.sh', str(depth)])
+    with open('./ProofTrees/euclid_book_d'+str(depth)+'.txt','r') as f:
+        theorem_names = list(map(lambda x:"euclid."+x.strip(), f.readlines()))
+    if limit:
+        theorem_names = theorem_names[:limit]
+    theorems = {}
+    return {theorem_name: utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+         for theorem_name in theorem_names}
+
+def getGeoCoqDAG(depth=2, mod_libs=False, limit=None):
+    theorem_dict = getGeoCoqTheorems(depth=depth, mod_libs=mod_libs, limit=limit)
+    theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
+    library_dag = toplistToDAG(theorem_tree)
+    return library_dag
+
+def exportGeoCoqDAG(max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
+    for depth in range(1, max_depth+1):
+        dag = getGeoCoqDAG(depth=depth, mod_libs=mod_libs, limit=limit)
+        exportOrigAndReplicas(dag, 'euclid_book', num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
+
+def geoTreesToDAGs(depth):
+    euclid_theorems = list(filter(lambda x: x[:7] == 'euclid.', os.listdir('./ProofTrees')))
+    trees = map(lambda x: utils.theoremNameToLists(x, depth=depth), euclid_theorems)
+    dags = map(toplistToDAG, trees)
+    for theorem_name, dag in zip(euclid_theorems, dags):
+        outfile = './ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt'
+        if not os.path.exists('./ProofDAGs/'+theorem_name):
+            os.mkdir('./ProofDAGs/'+theorem_name)
+        with open(outfile,'w') as f:
+            json.dump({k:list(v) for k,v in dag.items()}, f)
 
 #+END_SRC
 
@@ -664,23 +698,30 @@ theorem_names = [
   "CSB",
   "Alt_PI_eq",
   "equivalent_parallel_postulates_assuming_greenberg_s_postulate",
+  "is_hexamy",
   "bertrand_ballot",
   "Pigeonhole",
   "four_color",
   "Taylor",
   "Cardan_Tartaglia",
-  "puiseux_series_algeb_closed",
   "binomial",
   "Cayley_Hamilton",
   "card_powerset",
   "konigsberg_bridges"
 ]
 
-#"is_hexamy",
+max_depths = [4,None,2,None,2,3,None,2,None,1,None, \
+              None,1, None,None, 2,1,4,1,None,None,None, None,None]
 
-for theorem_name in theorem_names:
-  exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
-#exportDAGs(theorem_names[20], max_depth=1, num_replicas=5, num_iterations=10000)
+for (theorem_name, max_depth) in zip(theorem_names, max_depths):
+  depth = max_depth if max_depth else 1
+  exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
+
+library_names = ['Arith']
+for library_name in library_names:
+  exportLibDAG(library_name, max_depth=1, num_replicas=5)
+
+#exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
 
 #+END_SRC
 
@@ -795,48 +836,8 @@ exportLibDAG(library_name, max_depth=2, num_replicas=5, mod_libs=False)
 
 **** GeoCoq Library
 
-***** Boilerplate
-
 #+BEGIN_SRC python :session :results output silent
-  def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
-      if not os.path.exists('./ProofTrees/euclid_book_d'+str(depth)+'.txt'):
-          subprocess.call(['./make_euclid_theorems.sh', str(depth)])
-      with open('./ProofTrees/euclid_book_d'+str(depth)+'.txt','r') as f:
-          theorem_names = list(map(lambda x:"euclid."+x.strip(), f.readlines()))
-      if limit:
-          theorem_names = theorem_names[:limit]
-      theorems = {}
-      return {theorem_name: utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
-           for theorem_name in theorem_names}
-
-  def getGeoCoqDAG(depth=2, mod_libs=False, limit=None):
-      theorem_dict = getGeoCoqTheorems(depth=depth, mod_libs=mod_libs, limit=limit)
-      theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
-      library_dag = toplistToDAG(theorem_tree)
-      return library_dag
-
-  def exportGeoCoqDAG(max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
-      for depth in range(1, max_depth+1):
-          dag = getGeoCoqDAG(depth=depth, mod_libs=mod_libs, limit=limit)
-          exportOrigAndReplicas(dag, 'euclid_book', num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
-
-  def geoTreesToDAGs(depth):
-      euclid_theorems = list(filter(lambda x: x[:7] == 'euclid.', os.listdir('./ProofTrees')))
-      trees = map(lambda x: utils.theoremNameToLists(x, depth=depth), euclid_theorems)
-      dags = map(toplistToDAG, trees)
-      for theorem_name, dag in zip(euclid_theorems, dags):
-          outfile = './ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt'
-          if not os.path.exists('./ProofDAGs/'+theorem_name):
-              os.mkdir('./ProofDAGs/'+theorem_name)
-          with open(outfile,'w') as f:
-              json.dump({k:list(v) for k,v in dag.items()}, f)
-
-#+END_SRC
-
-***** Export
-
-#+BEGIN_SRC python :session :results output silent
-#exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
+exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
 #+END_SRC
 
 
