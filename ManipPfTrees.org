@@ -19,6 +19,10 @@ import ast
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
+import numpy as np
 import json
 import functools
 import pdb
@@ -264,7 +268,6 @@ outfile
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_d2_mod_DAG.png]]
 
-
 **** birthday_paradox
 
 #+BEGIN_SRC python :session :results file
@@ -279,60 +282,15 @@ outfile = './Images/'+theorem_name+'_DAG.png'
 #+RESULTS:
 [[file:./Images/birthday_paradox_DAG.png]]
 
-**** Pythagorean Theorem
-
-#+BEGIN_SRC python :session :results file
-theorem_name, depth = 'pythagoras', 1
-outfile = './Images/'+theorem_name+'_DAG.png'
-#dag = toplistToDAG(utils.theoremNameToLists(theorem_name, depth))
-#plotGraph(nx.DiGraph(dag), outfile, label=True, figsize=(8,8))
-'./Images/'+theorem_name+'_DAG.png'
-#+END_SRC
-
-#+RESULTS:
-[[file:./Images/pythagoras_DAG.png]]
-
-
 ** Generate random DAG's with same degree distribution
 
 *** Generate random replica DAG's with same arities
 
+Topological sort
+Find pair of edges
+Flip if still dag
+
 #+BEGIN_SRC python :session :results output silent
-
-ev_4_dag = toplistToDAG(utils.ev_4_tree)
-ev_8_dag = toplistToDAG(utils.ev_8_tree)
-
-def anyIncomingEdges(node, graph):
-    return any([node in v for v in graph.values()])
-
-def randomTopSortSlow(theorem_dag):
-    dag = copy.deepcopy(theorem_dag)
-    L = []
-    S = {k for k in dag if not anyIncomingEdges(k, dag)}
-    while S:
-        n = S.pop()
-        L.append(n)
-        neighbors = dag[n].copy()
-        for m in random.sample(neighbors, len(neighbors)):
-            dag[n].remove(m)
-            if not anyIncomingEdges(m, dag):
-                S.add(m)
-    return L
-
-def checkDictClosed(d):
-    for k in d:
-        for v in d[k]:
-            if v not in d: return False
-    return True
-
-def getDictClosure(d):
-    out = []
-    for k in d:
-        for v in d[k]:
-            if v not in d:
-                out.append(v)
-    return out
-
 
 def getNodeIndegrees(theorem_dag):
     indegrees = {k:0 for k in theorem_dag}
@@ -347,95 +305,31 @@ def getNodeIndegrees(theorem_dag):
 def getNodeOutdegrees(dag):
     return {k:len(v) for k,v in dag.items()}
 
-def randomTopSort(theorem_dag):
+def genComparableGraph(theorem_dag, num_iterations):
     dag = copy.deepcopy(theorem_dag)
-    L = []
-    indegree_dict = getNodeIndegrees(dag)
-    S = {k for k in indegree_dict if indegree_dict[k] == 0}
-    while S:
-        n = S.pop()
-        L.append(n)
-        neighbors = dag[n].copy()
-        for m in random.sample(neighbors, len(neighbors)):
-            dag[n].remove(m)
-            indegree_dict[m] -= 1
-            if indegree_dict[m] == 0: #anyIncomingEdges(m, dag):
-                S.add(m)
-    return L
-
-
-def getDownStream(node, graph):
-    out = []
-    frontier = [node]
-    while frontier:
-        current_node = frontier.pop(0)
-        out.append(current_node)
-        frontier.extend(list(graph[current_node]))
-    return out
-
-
-def checkTopOrder(top_order, graph):
-    collective_downstream = set()
-    for current_node in top_order[::-1]:
-        if current_node in collective_downstream:
-            return False
-        collective_downstream = collective_downstream.union(getDownStream(current_node, graph))
-    return True
-
-#assert(checkTopOrder(nx.topological_sort(nx.DiGraph(ev_8_dag)), ev_8_dag))
-#assert(all([checkTopOrder(randomTopSort(ev_8_dag), ev_8_dag) for _ in range(100)]))
-
-def flatten(lst_of_lsts):
-    return functools.reduce(lambda x,y: x+y, lst_of_lsts, [])
-
-#+END_SRC
-
-#+RESULTS:
-[[file:{'ev_SS': [], '6': [], '4': [], 'App1': ['4', 'App3', 'ev_SS'], 'App2': ['6', 'ev_SS', 'App1'], '2': [], 'ev_8.ev_2': [], 'App3': ['ev_8.ev_2', '2', 'ev_SS']}]]
-[[file:['App1', 'App2', '2', 'ev_0', 'O', 'ev_SS']]]
-[[file:[3, 6, 0, 4, 5, 2, 7, 8, 1, 9]]]
-[[file:[5, 1, 4]]]
-[[file:['App2', 'App1', 'App3', '2', 'ev_8.ev_2', '4', '6', 'ev_SS']]]
-[[file:[]]]
-[[file:[1, 5, 3]]]
-[[file:[(0, 3), (1, 2), (2, 1)]]]
-[[file:[(0, 0), (1, 1), (2, 2), (3, 3)]]]
-[[file:[0, 2, 3, 1]]]
-
-*** Gen replica alternate
-
-
-topological sort
-find pair of edges
-flip if still dag
-
-#+BEGIN_SRC python :session :results output silent
-
-  def genComparableGraph(theorem_dag, num_iterations):
-      dag = copy.deepcopy(theorem_dag)
-      num_nodes = len(dag)
-      top_sort = list(nx.topological_sort(nx.DiGraph(dag)))
-      node_to_index = {v:i for i,v in enumerate(top_sort)}
-      for _ in range(num_iterations):
-          e1_end, e2_end = None, None
-          while not e1_end:
-              e1_start = random.choice(range(num_nodes))
-              e1_end_options = list(map(lambda v: node_to_index[v], dag[top_sort[e1_start]]))
-              if e1_end_options:
-                  e1_end = random.choice(e1_end_options)
-          while not e2_end:
-              e2_start = random.choice(range(e1_end))
-              e2_end_options = list(filter(lambda x: x > e1_start,
-                                           map(lambda v: node_to_index[v], dag[top_sort[e2_start]])))
-              if e2_end_options:
-                  e2_end = random.choice(e2_end_options)
-          #now switch
-          dag[top_sort[e1_start]].remove(top_sort[e1_end])
-          dag[top_sort[e1_start]].add(top_sort[e2_end])
-          dag[top_sort[e2_start]].remove(top_sort[e2_end])
-          dag[top_sort[e2_start]].add(top_sort[e1_end])
-      assert(nx.is_directed_acyclic_graph(nx.DiGraph(dag)))
-      return dag
+    num_nodes = len(dag)
+    top_sort = list(nx.topological_sort(nx.DiGraph(dag)))
+    node_to_index = {v:i for i,v in enumerate(top_sort)}
+    for _ in range(num_iterations):
+        e1_end, e2_end = None, None
+        while not e1_end:
+            e1_start = random.choice(range(num_nodes))
+            e1_end_options = list(map(lambda v: node_to_index[v], dag[top_sort[e1_start]]))
+            if e1_end_options:
+                e1_end = random.choice(e1_end_options)
+        while not e2_end:
+            e2_start = random.choice(range(e1_end))
+            e2_end_options = list(filter(lambda x: x > e1_start,
+                                         map(lambda v: node_to_index[v], dag[top_sort[e2_start]])))
+            if e2_end_options:
+                e2_end = random.choice(e2_end_options)
+        #now switch
+        dag[top_sort[e1_start]].remove(top_sort[e1_end])
+        dag[top_sort[e1_start]].add(top_sort[e2_end])
+        dag[top_sort[e2_start]].remove(top_sort[e2_end])
+        dag[top_sort[e2_start]].add(top_sort[e1_end])
+    assert(nx.is_directed_acyclic_graph(nx.DiGraph(dag)))
+    return dag
 
 def genComparableGraphs(theorem_dag, num_iterations, num_graphs):
     return [genComparableGraph(theorem_dag, num_iterations) for _ in range(num_graphs)]
@@ -501,7 +395,6 @@ outfile
 
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_gen_DAG.png]]
-
 
 *** Export multiple replica DAG's
 **** Utils
@@ -585,6 +478,7 @@ def geoTreesToDAGs(depth):
 theorem_names = [
   "FTA",
   "Q_countable",
+  "pythagoras",
   "Goedel'sIncompleteness1st",
   "Quadratic_reciprocity",
   "Euler_exp_totient",
@@ -596,15 +490,18 @@ theorem_names = [
   "pytha_thm3",
   "CSB",
   "Alt_PI_eq",
+  "postulate_of_existence_of_a_triangle_whose_angles_sum_to_two_rights",
   "is_hexamy",
   "bertrand_ballot",
   "Pigeonhole",
   "four_color",
   "Taylor",
+  "Cardan_Tartaglia",
   "binomial",
   "Cayley_Hamilton",
+  "Wilson",
   "card_powerset",
-  "konigsberg_bridges",
+  #"konigsberg_bridges", # <-- really big
   "herron_qin",
   "Zis_gcd_bezout",
   "Ceva",
@@ -621,23 +518,24 @@ theorem_names = [
   "divisors_correct",
   "div3",
   "Desargues",
-  "edivpP",
+  #"edivpP",
   "triangle",
   "birthday_paradox",
   "inclusion_exclusion",
+  "mul_adj_mx",
   "Bertrand"
 ]
 
 #max_depths = [4,3,2,2,2,3,3,2,2,1,None, \
 #              None,1, None,None, 2,1,4,1,None,None,None, None,None]
 
-max_depths = [1 for x in theorem_names]
-for (theorem_name, max_depth) in zip(theorem_names[20:], max_depths[20:]):
+max_depths = [2 for x in theorem_names]
+for (theorem_name, max_depth) in zip(theorem_names[-13:], max_depths[-13:]):
   depth = max_depth if max_depth else 1
   exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
 
-#exportDAGs("pythagoras", max_depth=1, num_replicas=5, num_iterations=10000)
-#
+#exportDAGs("mul_adj_mx", max_depth=1, num_replicas=5, num_iterations=10000)
+
 #library_names = ['Arith']
 #for library_name in library_names:
 #  exportLibDAG(library_name, max_depth=1, num_replicas=5)
@@ -666,10 +564,6 @@ exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
 theorem_name = 'ev_8_alt'
 exportDAGs(theorem_name, max_depth=5, num_replicas=5, num_iterations=10000)
 #+END_SRC
-
-
-
-
 
 ** DAG analysis
 *** Plotting and Import/Export
@@ -707,7 +601,7 @@ def plotLineGraphsLogLog(vals, outfile):
     for i in range(len(vals)):
         ax = axs[i]
         ax.plot(list(map(modifiedLog, range(len(vals[i])))),
-                     list(map(modifiedLog, vals[i])), 'r+')
+                list(map(modifiedLog, vals[i])), 'r+')
     fig.tight_layout()
     plt.savefig(outfile)
 
@@ -824,7 +718,6 @@ getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
 #+RESULTS:
 [[file:./Images/gen_sqrt2_not_rational_d3_indegree_dist.png]]
 
-
 *** Count number of undirected loops
 
 #+BEGIN_SRC python :session :results output silent
@@ -880,9 +773,9 @@ def average(lst):
 ****** Original
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, mod_libs = 'sqrt2_not_rational', 3, False
-plotOrigPageRank(theorem_name, depth, mod_libs=mod_libs)
-pageRankOrigFileName(theorem_name, depth, mod_libs=mod_libs)
+theorem_name, depth = 'sqrt2_not_rational', 3
+plotOrigPageRank(theorem_name, depth)
+pageRankOrigFileName(theorem_name, depth)
 #+END_SRC
 
 #+RESULTS:
@@ -891,13 +784,13 @@ pageRankOrigFileName(theorem_name, depth, mod_libs=mod_libs)
 ****** Null model
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, mod_libs = 'sqrt2_not_rational', 3, True
-plotRandPageRank(theorem_name, depth, mod_libs=mod_libs)
-pageRankRandFileName(theorem_name, depth, mod_libs=mod_libs)
+theorem_name, depth = 'sqrt2_not_rational', 3
+plotRandPageRank(theorem_name, depth)
+pageRankRandFileName(theorem_name, depth)
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_d3_mod_gen_page_rank.png]]
+[[file:./Images/sqrt2_not_rational_d3_gen_page_rank.png]]
 
 *** Modularity
 
@@ -952,51 +845,10 @@ outfile
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_d2_modularities.png]]
 
-
-
-** DAG Generative Model
-
-**** Create DAG
+** DAG generative model
+*** Create DAG
 
 #+BEGIN_SRC python :session :results output silent
-
-def getAncestors(node, graph):
-    queue = [{node}]
-    non_ancestors = set(graph.keys())
-    while queue:
-        child_layer = queue.pop()
-        non_ancestors -= child_layer
-        parent_layer = set()
-        for n in non_ancestors:
-            if graph[n].intersection(child_layer):
-                parent_layer.add(n)
-        if parent_layer:
-            queue.append(parent_layer)
-    non_ancestors.add(node)
-    return graph.keys() - non_ancestors
-
-assert(getAncestors('b',{'a':{'b','c'}, 'b':set(),'c':set()}) == {'a'})
-assert(getAncestors('a',{'a':{'b','c'}, 'b':set(),'c':set()}) == set())
-assert(getAncestors('d',{'a':{'b','c'}, 'b':{'d'},'c':{'d'},'d':set()}) == {'a','b','c'})
-assert(getAncestors('d',{'a':{'b','c'}, 'b':{'d'},'c':{'d'},'d':set(),'e':set()}) == {'a','b','c'})
-
-def createGraphSlow(m, p, q, num_iterations):
-    d = {}
-    for i in range(num_iterations):
-        d['v'+str(i)] = set()
-        if m > len(d.keys()):
-            maybe_connect = d.keys()
-        else:
-            maybe_connect = random.sample(d.keys(), m)
-        for x in maybe_connect:
-            if random.random() < p:
-                #d['v'+str(i)].add(x)
-                d[x].add('v'+str(i))
-                for ancestor in getAncestors(x, d):
-                    if random.random() < q:
-                        #d['v'+str(i)].add(ancestor)
-                        d[ancestor].add('v'+str(i))
-    return d
 
 def createGraph(m, p, q, num_iterations):
     d = nx.DiGraph()
@@ -1008,10 +860,11 @@ def createGraph(m, p, q, num_iterations):
             maybe_connect = random.sample(d.nodes(), m)
         for x in maybe_connect:
             if random.random() < p:
-                d.add_edge(x, 'v'+str(i))
-                for ancestor in nx.algorithms.dag.ancestors(d,x):
-                    if random.random() < q:
-                        d.add_edge(ancestor, 'v'+str(i))
+                d.add_edge('v'+str(i),x)
+                if random.random() < q:
+                    for ancestor in nx.algorithms.dag.ancestors(d,x):
+                        d.add_edge('v'+str(i),ancestor)
+    #assert(nx.is_directed_acyclic_graph(d))
     return {k:set(v) for k,v in nx.convert.to_dict_of_lists(d).items()}
 
 def plotDegreeDist(graph, in_or_out, outfile):
@@ -1029,10 +882,10 @@ def exportGenGraph(graph):
 
 #+END_SRC
 
-Plot Graph
+*** Plot Graph
 
 #+BEGIN_SRC python :session :results file
-graph = createGraph(3,.5,.33,50)
+graph = createGraph(3,.5,.33,100)
 outfile = 'Images/genGraph.png'
 plotGraph(nx.DiGraph(graph), outfile)
 outfile
@@ -1041,11 +894,11 @@ outfile
 #+RESULTS:
 [[file:Images/genGraph.png]]
 
-Plot Degree Distribution
+*** Plot Degree Distribution
 
 #+BEGIN_SRC python :session :results file
-outfile, in_or_out = 'genGraph_degree_dist.png', 'out'
-graph = createGraph(3,.6,.33,1000)
+outfile, in_or_out = 'genGraph_degree_dist.png', 'in'
+graph = createGraph(3,.3,.33,4000)
 plotDegreeDistLogLog(graph, in_or_out, outfile)
 outfile
 #+END_SRC
@@ -1053,54 +906,148 @@ outfile
 #+RESULTS:
 [[file:genGraph_degree_dist.png]]
 
-Export Graph
+*** Export Graph
 
 #+BEGIN_SRC python :session :results output silent
-graph = createGraph(3,.6,.33,10000)
+graph = createGraph(3,.3,.33,4000)
 exportGenGraph(graph)
 #+END_SRC
 
-** Compare Euclid Graphs
+*** Plot PageRank
 
 #+BEGIN_SRC python :session :results file
-outfile = 'Images/compare_elements_dags.png'
+graph = createGraph(3,.3,.33,3000)
+p_out = sorted(getPageRank(graph).values())[::-1]
+plotLineGraphLogLog(p_out, './Images/gen_graph_pagerank.png')
+'./Images/gen_graph_pagerank.png'
+#+END_SRC
 
-g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
-g2 = importDAG('./ProofDAGs/gen_graph.txt')
-g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
+#+RESULTS:
+[[file:./Images/gen_graph_pagerank.png]]
 
-d1 = sparseToDense(getDegreeDist(g1,'in'))
-d2 = sparseToDense(getDegreeDist(g2,'out'))
-d3 = sparseToDense(getDegreeDist(g3,'in'))
-plotLineGraphsLogLog([d1,d2,d3], outfile)
+#+BEGIN_SRC python :session :results file
+betas = []
+for p in map(lambda x:x/50.0, range(1,30)):
+    graph = createGraph(3,p,.33,1000)
+    p_out = sorted(getPageRank(graph).values())[::-1]
+    betas.append(estimateBeta(p_out))
+
+plotLineGraph(betas, './Images/gen_graph_beta_v_p.png')
+'./Images/gen_graph_beta_v_p.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_graph_beta_v_p.png]]
+
+#+BEGIN_SRC python :session :results file
+outfile = './Images/gen_graph_beta_p_mq.png'
+
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+ax.view_init(elev=30.,azim=90)
+#
+#
+#def f(p,m):
+#    q = 1.0/m
+#    graph = createGraph(m,p,q,500)
+#    p_out = sorted(getPageRank(graph).values())[::-1]
+#    beta = estimateBeta(p_out)
+#    return beta[0]
+#
+## Make data.
+#X = np.arange(0.05, 1.0, 0.05)
+#Y = np.arange(1, 20, 1) #m / q (from 1 to 10)
+#Xmesh, Ymesh = np.meshgrid(X, Y)
+#Z = np.array([[f(x,y) for x in X] for y in Y])
+#
+# Plot the surface.
+surf = ax.plot_surface(Xmesh, Ymesh, Z, cmap=cm.coolwarm,
+                       linewidth=0, antialiased=False)
+
+# Customize the z axis.
+#ax.set_zlim(-1.01, 1.01)
+ax.zaxis.set_major_locator(LinearLocator(10))
+ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+# Add a color bar which maps values to colors.
+fig.colorbar(surf, shrink=0.5, aspect=5)
+
+plt.savefig(outfile)
+
 outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:Images/compare_elements_dags.png]]
+[[file:./Images/gen_graph_beta_p_mq.png]]
 
+
+** Compare Euclid graphs
+*** Degree Dists
+
+#+BEGIN_SRC python :session :results output silent
+
+def plotDegreeDistsLogLog(vals, outfile):
+    figsize = (6,3*len(vals))
+    fig, axs = plt.subplots(len(vals), 1, sharex = True, figsize=figsize)
+    for i in range(len(vals)):
+        ax = axs[i]
+        norm = float(sum(vals[i]))
+        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
+                list(map(modifiedLog, map(lambda x: x/norm, vals[i]))), 'r+')
+        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
+                list(map(modifiedLog,
+                         map(lambda x: 1.0/((x+1.)*(x+2.)), range(len(vals[i]))))), 'b+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+#+END_SRC
 
 #+BEGIN_SRC python :session :results file
-outfile = 'Images/compare_elements_dags_pagerank.png'
+outfile = 'Images/Euclid_compare_outdegrees.png'
 
 #g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
-g_comp = genComparableGraph(g1, num_iterations=100)
+#g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
+#g2 = importDAG('./ProofDAGs/gen_graph.txt')
+#g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
+#
+d1 = sparseToDense(getDegreeDist(g1,'out'))
+d_rand = sparseToDense(getDegreeDist(g_rand,'out'))
+d2 = sparseToDense(getDegreeDist(g2,'out'))
+d3 = sparseToDense(getDegreeDist(g3,'out'))
+#plotDegreeDistsLogLog([d1,d_rand,d2,d3], outfile)
+plotLineGraphsLogLog([d1,d_rand,d2,d3], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/Euclid_compare_outdegrees.png]]
+
+*** PageRank
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/Euclid_compare_pagerank.png'
+
+#g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+#g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
 #g2 = importDAG('./ProofDAGs/gen_graph.txt')
 #g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
 
 #p1 = sorted(getPageRank(g1).values())[::-1]
-#p_comp = sorted(getPageRank(g_comp).values())[::-1]
+#p_rand = sorted(getPageRank(g_rand).values())[::-1]
 #p2 = sorted(getPageRank(g2).values())[::-1]
 #p3 = sorted(getPageRank(g3).values())[::-1]
-#plotLineGraphsLogLog([p1,p_comp,p2,p3], outfile)
+print("Betas:", list(map(estimateBeta,[p1,p_rand,p2,p3])))
+plotLineGraphsLogLog([p1,p_rand,p2,p3], outfile)
 outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:Images/compare_elements_dags_pagerank.png]]
+[[file:Images/Euclid_compare_pagerank.png]]
+
+*** Modularity
 
 #+BEGIN_SRC python :session :results output silent
-outfile = 'Images/compare_elements_dags_pagerank.png'
+outfile = 'Images/Euclid_compare_modularity.png'
 
 #g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
 #g2 = importDAG('./ProofDAGs/gen_graph.txt')
@@ -1112,831 +1059,3 @@ m3 = getModularity(g3)
 
 print(m1, m3, m3)
 #+END_SRC
-
-
-
-** DAG analysis'
-*** Basic DAG Analysis Utils
-
-**** Utils
-
-#+BEGIN_SRC python :session :results output silent
-
-def testDAG(g):
-    nx.write_adjlist(nx.DiGraph(g), './temp.txt')
-    return nx.read_adjlist('./temp.txt', create_using=nx.DiGraph())
-
-def importReplicas(theorem_name):
-    in_folder = './ProofDAGs/'+theorem_name+'/'
-    orig = []
-    replicas = []
-    for f in os.listdir(in_folder):
-        dag = nx.read_adjlist(in_folder+f,create_using=nx.DiGraph())
-        if 'gen' in f:
-            replicas.append(dag)
-        else:
-            orig.append(dag)
-    assert(len(orig) == 1)
-    return orig[0], replicas
-
-def nxToDict(graph):
-    return {k:set(v) for k,v in nx.to_dict_of_lists(graph).items()}
-
-def importReplicasToDict(theorem_name):
-    in_folder = './ProofDAGs/'+theorem_name+'/'
-    orig = []
-    replicas = []
-    for f in os.listdir(in_folder):
-        dag = nxToDict(nx.read_adjlist(in_folder+f,create_using=nx.DiGraph()))
-        if 'gen' in f:
-            replicas.append(dag)
-        else:
-            orig.append(dag)
-    assert(len(orig) == 1)
-    return orig[0], replicas
-
-
-def average(lst):
-    return sum(lst) / len(lst)
-
-def dUnion(d1, d2):
-    all_keys = set(d1.keys()).union(set(d2.keys()))
-    out = dict()
-    for k in all_keys:
-        if k in d1:
-            out[k] = d1[k]
-        else:
-            out[k] = d2[k]
-    return out
-
-def findStrictMotifMatches(motif, dag):
-    downgraph_nodes = map(lambda k: (k, nx.algorithms.descendants(dag, k)), dag.nodes_iter())
-    downgraphs = map(lambda n: (n[0], nx.DiGraph(dUnion({n[0]:dag[n[0]]},
-                                                        {x:dag[x] for x in n[1]}))),
-                     downgraph_nodes)
-    return set(map(lambda p: p[0],
-                   filter(lambda x: nx.is_isomorphic(motif, x[1]),
-                          downgraphs)))
-
-def createHist(lst):
-    return list(map(lambda x: lst.count(x), range(max(lst)+1)))
-
-def createDAGHist(dag):
-    return createHist(list(map(len, dag.adjacency_list())))
-
-def powerset(iterable):
-    "powerset([1,2,3]) --> () (1,) (2,) (3,) (1,2) (1,3) (2,3) (1,2,3)"
-    s = list(iterable)
-    return itertools.chain.from_iterable(itertools.combinations(s, r) for r in range(len(s)+1))
-
-def findAllCombosOfNodesUnder(node, dag, size):
-    out_node_lists = [[node]]
-    count = 0
-    while any(map(lambda x: len(x) != size, out_node_lists)):
-        node_list = out_node_lists.pop(0)
-        print(node_list)
-        for child_combo in powerset(dag[node_list[-1]]):
-            if len(node_list) < size:
-                out_node_lists.append(node_list+list(child_combo))
-            elif len(node_list) == size:
-                out_node_lists.append(node_list)
-        count += 1
-        if count > 5: break
-    return out_node_lists
-
-#+END_SRC
-
-**** Partitioning Utils
-
-#+BEGIN_SRC python :session :results output silent
-
-def plotPartitions(G, partition, outfile):
-    plt.figure()
-    size = float(len(set(partition.values())))
-    pos = nx.spring_layout(G)
-    count = 0.
-    for com in set(partition.values()) :
-        list_nodes = [nodes for nodes in partition.keys()
-                                    if partition[nodes] == com]
-        nx.draw_networkx_nodes(G, pos, list_nodes, node_size = 20,
-                                    node_color = str(count / size))
-        count = count + 1.
-    nx.draw_networkx_edges(G, pos, alpha=0.5)
-    plt.savefig(outfile)
-
-def plotPartitionComparison(graphs, partitions, outfile, figsize=(6,4)):
-    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
-    modularities = list(map(lambda G_part: community.modularity(G_part[1], G_part[0]),
-                            zip(graphs, partitions)))
-    axs.plot(range(len(modularities)), modularities, 'r+')
-    axs.set_title('Modularity v Replica Count')
-    axs.set_xlabel('Replica Count')
-    axs.set_ylabel('Modularity')
-    fig.tight_layout()
-    plt.savefig(outfile)
-
-def theoremNameToPartitionOutfile(theorem_name):
-    return './Images/'+theorem_name+'_partitions.png'
-
-def plotPartitionsFromTheoremName(theorem_name):
-    outfile = theoremNameToPartitionOutfile(theorem_name)
-    if not os.path.exists(outfile):
-        orig, replicas = importReplicas(theorem_name)
-        testDAG(orig)
-        G = nx.Graph(orig)
-        partition = community.best_partition(G)
-        plotPartitions(nx.Graph(orig), partition, outfile)
-
-def theoremNameToModularitiesOutfile(theorem_name):
-    return './Images/'+theorem_name+'_modularities.png'
-
-def plotModularitiesFromTheoremName(theorem_name):
-    outfile = theoremNameToModularitiesOutfile(theorem_name)
-    if not os.path.exists(outfile):
-        orig, replicas = importReplicas(theorem_name)
-        graphs = list(map(nx.Graph, [orig] + replicas))
-        testDAG(graphs[0])
-        partitions = list(map(community.best_partition, graphs))
-        plotPartitionComparison(graphs, partitions, outfile)
-
-#+END_SRC
-
-**** ev_8
-***** Partition
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'ev_8'
-plotPartitionsFromTheoremName(theorem_name)
-theoremNameToPartitionOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:./Images/ev_8_partitions.png]]
-
-***** Partition Replicas
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'ev_8'
-plotModularitiesFromTheoremName(theorem_name)
-theoremNameToModularitiesOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:./Images/ev_8_modularities.png]]
-
-**** ev_8_alt
-***** Partition
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'ev_8_alt'
-plotPartitionsFromTheoremName(theorem_name)
-theoremNameToPartitionOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:./Images/ev_8_alt_partitions.png]]
-
-***** Partition Replicas
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'ev_8_alt'
-plotModularitiesFromTheoremName(theorem_name)
-theoremNameToModularitiesOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:./Images/ev_8_alt_modularities.png]]
-
-
-#+END_SRC
-
-**** sqrt2_not_rational
-***** Partition
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'sqrt2_not_rational'
-plotPartitionsFromTheoremName(theorem_name)
-theoremNameToPartitionOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:./Images/sqrt2_not_rational_partitions.png]]
-
-***** Partition Replicas
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'sqrt2_not_rational'
-plotModularitiesFromTheoremName(theorem_name)
-theoremNameToModularitiesOutfile(theorem_name)
-#+END_SRC
-
-#+RESULTS:
-[[file:./Images/sqrt2_not_rational_modularities.png]]
-
-
-#+END_SRC
-
-*** DAG Motif Finding
-
-#+BEGIN_SRC python :session :results output silent
-
-def countFeedForward(dag):
-    count = 0
-    for n in dag:
-        children = dag[n]
-        for ch in children:
-            grandchildren = dag[ch]
-            if any(children & grandchildren):
-                #print(n)
-                count += 1
-    return count
-
-assert(countFeedForward(ev_8_dag) == 2)
-
-def getAllFeedForwardMatches(dag):
-    matches = []
-    for n in dag:
-        children = dag[n]
-        for child in children:
-            grandchildren = dag[child]
-            for grandchild in grandchildren:
-                if grandchild in children:
-                    matches.append({n,child,grandchild})
-    return matches
-
-assert(getAllFeedForwardMatches(ev_8_dag)
-       == [{'App1', 'App3', 'ev_SS'}, {'App2', 'App1', 'ev_SS'}])
-
-def hasCrossRefs(group_of_matches, dag):
-    has_cross_refs = False
-    for i in range(len(group_of_matches)):
-        match, rest = group_of_matches[i], group_of_matches[:i] + group_of_matches[i+1:]
-        match_children = set()
-        for x in match:
-            match_children = match_children | dag[x]
-        rest_nodes = set()
-        for y in rest:
-            rest_nodes = rest_nodes | y
-        if any(match_children & rest_nodes):
-            return True
-    return has_cross_refs
-
-assert(hasCrossRefs([{'App2','App1','ev_SS'},{'App3'}], ev_8_dag))
-assert(not hasCrossRefs([{'App2','App1','ev_SS'},{'2'}], ev_8_dag))
-
-def getLargestNonIntersectingGroup(matches, dag):
-    largest_size = 0
-    largest_group_of_matches = None
-    for group_of_matches in powerset(matches):
-        if group_of_matches:
-            if len(group_of_matches) <= 1:
-                is_overlapping = False
-            else:
-                is_overlapping = any(group_of_matches[0].intersection(*group_of_matches[1:]))
-            if (not is_overlapping and not hasCrossRefs(group_of_matches, dag)
-                                   and len(group_of_matches) > largest_size):
-                largest_group_of_matches = group_of_matches
-                largest_size = len(group_of_matches)
-    return list(largest_group_of_matches) if largest_group_of_matches else []
-
-
-assert(
-    getLargestNonIntersectingGroup(
-        [{'App1', 'App3', 'ev_SS'}, {'App2', 'App1', 'ev_SS'}], ev_8_dag) ==
-    [{'App3', 'App1', 'ev_SS'}])
-
-def removeGroupOfMatches(group_of_matches, dag):
-    previous_motif_nodes = list(filter(lambda x: x[:6] == 'motif_', dag))
-    if previous_motif_nodes:
-        max_previous_motif_num = max(map(lambda y: int(y[6:]), previous_motif_nodes))
-    else:
-        max_previous_motif_num = 0
-    new_motif_name = 'motif_' + str(max_previous_motif_num)
-    new_dag = dag.copy()
-    for match in group_of_matches:
-        new_motif_name = new_motif_name[:6] + str(int(new_motif_name[6:])+1)
-        new_dag[new_motif_name] = set()
-        for node in dag:
-            if any(dag[node] & match):
-                new_dag[node] = (dag[node] - match) | {new_motif_name}
-            if node in match:
-                new_dag[new_motif_name] = new_dag[new_motif_name] | (dag[node] - match)
-                del new_dag[node]
-    return new_dag
-
-def removeMatch(match, dag):
-    previous_motif_nodes = list(filter(lambda x: x[:6] == 'motif_', dag))
-    if previous_motif_nodes:
-        max_previous_motif_num = max(map(lambda y: int(y[6:]), previous_motif_nodes))
-    else:
-        max_previous_motif_num = 0
-    new_motif_name = 'motif_' + str(max_previous_motif_num)
-    new_dag = dag.copy()
-    new_motif_name = new_motif_name[:6] + str(int(new_motif_name[6:])+1)
-    new_dag[new_motif_name] = set()
-    for node in dag:
-        if any(dag[node] & match):
-            new_dag[node] = (dag[node] - match) | {new_motif_name}
-        if node in match:
-            new_dag[new_motif_name] = new_dag[new_motif_name] | (dag[node] - match)
-            del new_dag[node]
-    return new_dag
-
-assert(
-    removeGroupOfMatches([{'App3', 'App1', 'ev_SS'}], ev_8_dag) ==
-    {'6': set(), '4': set(), 'App2': {'6', 'motif_1'}, '2': set(),
-     'ev_8.ev_2': set(), 'motif_1': {'ev_8.ev_2', '2', '4'}})
-
-def compressDAG(dag, repeat=1):
-    new_dag = dag.copy()
-    for _ in range(repeat):
-        matches = getAllFeedForwardMatches(new_dag)
-        #print("matches", matches)
-        if matches:
-            match = list(matches)[0]
-            new_dag = removeMatch(match, new_dag)
-        #group_of_matches = getLargestNonIntersectingGroup(matches, new_dag)
-        #print("g of matches", group_of_matches)
-        #if group_of_matches:
-        #    new_dag = removeGroupOfMatches(group_of_matches, new_dag)
-    return new_dag
-
-def getCompressedDAGSizes(dag,repeat=1, theorem_name=None):
-    new_dag = dag.copy()
-    sizes = [len(new_dag)]
-    for i in range(repeat):
-        matches = getAllFeedForwardMatches(new_dag)
-        if matches:
-            match = list(matches)[0]
-            new_dag = removeMatch(match, new_dag)
-        sizes.append(len(new_dag))
-        if theorem_name:
-            plotGraph(nx.DiGraph(new_dag),
-                                './Images/'+theorem_name+'_dag_compressed_'+str(i+1),
-                                label=True)
-    return sizes
-
-
-def getCompressedDAGs(dag, repeat=1):
-    new_dag = dag.copy()
-    out_dags = [dag.copy()]
-    for i in range(repeat):
-        matches = getAllFeedForwardMatches(new_dag)
-        print('hi',matches)
-        if matches:
-            match = list(matches)[0]
-            new_dag = removeMatch(match, new_dag)
-        out_dags.append(new_dag.copy())
-    return out_dags
-
-def getNumMotifs(dag, repeat=1, check_dag=False, theorem_name=None):
-      new_dag = dag.copy()
-      num_motifs = []
-      print('0', nx.is_directed_acyclic_graph(nx.DiGraph(dag)))
-      for i in range(repeat):
-          matches = getAllFeedForwardMatches(new_dag)
-          num_motifs.append(len(matches))
-          if matches:
-              match = list(matches)[0]
-              new_dag = removeMatch(match, new_dag)
-          if check_dag:
-              print(str(i+1), nx.is_directed_acyclic_graph(nx.DiGraph(new_dag)))
-          if theorem_name:
-              plotGraph(nx.DiGraph(new_dag),
-                                './Images/'+theorem_name+'_dag_compressed_'+str(i+1),
-                                label=True)
-      return num_motifs
-
-#+END_SRC
-
-*** Plot DAG motif finding and removal
-**** ev_8
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_8_dag_compressed.png'
-new_dag = compressDAG(ev_8_dag)
-plotGraph(nx.DiGraph(new_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_dag_compressed.png]]
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_8_mod_dag_compressed.png'
-ev_8_dag_mod = ev_8_dag.copy()
-ev_8_dag_mod['2'] = {'ev_8.ev_2'}
-new_dag = compressDAG(ev_8_dag_mod, repeat=2)
-plotGraph(nx.DiGraph(new_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_mod_dag_compressed.png]]
-
-**** ev_8_alt
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_8_alt_dag_compressed.png'
-new_dag = compressDAG(toplistToDAG(utils.ev_8_alt_tree))
-plotGraph(nx.DiGraph(new_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_alt_dag_compressed.png]]
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_8_alt_dag_compressed_2.png'
-new_dag = compressDAG(toplistToDAG(utils.ev_8_alt_tree),repeat=2)
-plotGraph(nx.DiGraph(new_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_alt_dag_compressed_2.png]]
-
-*** Plot size v num compressions
-**** ev_8
-***** Original
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_8_dag_compression_comparison.png'
-sizes = getCompressedDAGSizes(ev_8_dag, repeat=3, theorem_name='ev_8')
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_dag_compression_comparison.png]]
-
-**** ev_8_alt
-***** Original
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_8_alt_dag_compression_comparison.png'
-dag = toplistToDAG(utils.ev_8_alt_tree)
-sizes = getCompressedDAGSizes(dag, repeat=5, theorem_name='ev_8_alt')
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_alt_dag_compression_comparison.png]]
-
-***** Replica
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/ev_8_alt_gen_dag_compression_comparison.png'
-orig, replicas = importReplicasToDict('ev_8_alt')
-sizes = [getCompressedDAGSizes(replica, repeat=5, theorem_name='ev_8_alt')
-           for replica in [orig]+replicas[:3]]
-print(sizes)
-plotLineGraphs(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/ev_8_alt_gen_dag_compression_comparison.png]]
-
-**** factorial
-
-Notice that there are no cycles here despite the recursion
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/factorial_dag.png'
-fact_string = "(Top (Definition Top.fact (Fix (Functions (App fact 0 (Prod n nat nat) (Lambda n nat (Case 0 (Lambda n nat nat) (CaseMatch n) (CaseBranches (App S O) (Lambda n' nat (App Coq.Init.Nat.mul n (App fact n')))))))) 0)))"
-fact_tree = utils.parenStringToLists(fact_string)
-fact_dag = toplistToDAG(fact_tree)
-plotGraph(nx.DiGraph(fact_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/factorial_dag.png]]
-
-I don't believe I can create a cycle on the first pass, but unsure.
-Try compression until cycle creation.
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/factorial_repeat_motif.png'
-dags = getCompressedDAGs(fact_dag, repeat=2)
-plotGraphList([nx.DiGraph(x) for x in dags], outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/factorial_repeat_motif.png]]
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/factorial_num_motifs.png'
-sizes = getNumMotifs(fact_dag, repeat=4)
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/factorial_num_motifs.png]]
-
-Much higher average stopping point.
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/factorial_gen_num_motifs.png'
-sizes = getNumMotifs(genComparableGraph(fact_dag), repeat=8)
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/factorial_gen_num_motifs.png]]
-
-**** forward
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/forward_dag.png'
-forward_string = "(Top (Definition Top.forward (Lambda f (Prod Anonymous (App prod (Axiom Top.A) (Axiom Top.B)) (Axiom Top.C)) (Lambda a (Axiom Top.A) (Lambda b (Axiom Top.B) (Cast (Cast (App eq_refl (Axiom Top.C) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b))) REVERTcast (App eq (Axiom Top.C) (App f (App pair (Axiom Top.A) (Axiom Top.B) (App Coq.Init.Datatypes.fst (Axiom Top.A) (Axiom Top.B) (App pair (Axiom Top.A) (Axiom Top.B) a b)) (App Coq.Init.Datatypes.snd (Axiom Top.A) (Axiom Top.B) (App pair (Axiom Top.A) (Axiom Top.B) a b)))) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))) REVERTcast (App eq (Axiom Top.C) (App Top.uncurry (App Top.curry f) (App pair (Axiom Top.A) (Axiom Top.B) a b)) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))))))))"
-forward_tree = utils.parenStringToLists(forward_string)
-forward_dag = toplistToDAG(forward_tree)
-plotGraph(nx.DiGraph(forward_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/forward_dag.png]]
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/forward_num_motifs.png'
-sizes = getNumMotifs(forward_dag, repeat=15)
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/forward_num_motifs.png]]
-
-
-Similar average stopping point for random
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/forward_gen_num_motifs.png'
-sizes = getNumMotifs(genComparableGraph(forward_dag), repeat=15)
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/forward_gen_num_motifs.png]]
-
-
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/forward_repeat_motif.png'
-dags = getCompressedDAGs(forward_dag, repeat=3)
-plotGraphList([nx.DiGraph(x) for x in dags], outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/forward_repeat_motif.png]]
-
-**** currying
-
-***** Plot DAG
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/curry_dag.png'
-curry_string = "(Top (Definition Top.curry (Lambda f (Prod Anonymous (App prod (Axiom Top.A) (Axiom Top.B)) (Axiom Top.C)) (Lambda a (Axiom Top.A) (Lambda b (Axiom Top.B) (App f (App pair (Axiom Top.A) (Axiom Top.B) a b)))))))"
-curry_tree = utils.parenStringToLists(curry_string)
-curry_dag = toplistToDAG(curry_tree)
-plotGraph(nx.DiGraph(curry_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/curry_dag.png]]
-
-***** Plot num motifs
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/curry_num_motifs.png'
-sizes = getNumMotifs(curry_dag, repeat=5)
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/curry_num_motifs.png]]
-
-***** Plot num motifs of replica
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/curry_gen_num_motifs.png'
-sizes = getNumMotifs(genComparableGraph(curry_dag), repeat=5)
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/curry_gen_num_motifs.png]]
-
-*** Test hypo that more cycles in theorem version
-**** dec inc
-
-There are more in the theorem case, but hard to say if that is just because of the size.
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/dec_inc_dag.png'
-dec_inc_string = "(Top (Definition Top.dec_inc (Lambda nat (App Top.dec (App S gen_var_2)))))"
-dec_inc_tree = utils.parenStringToLists(dec_inc_string)
-dec_inc_dag = toplistToDAG(dec_inc_tree)
-print(dec_inc_dag)
-plotGraph(nx.DiGraph(dec_inc_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/dec_inc_dag.png]]
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/dec_inc_num_motifs.png'
-sizes = getNumMotifs(dec_inc_dag, repeat=10, theorem_name='dec_inc')
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/dec_inc_num_motifs.png]]
-
-**** dec inc prop
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/dec_inc_prop_dag.png'
-dec_inc_prop_string = "(Top (Definition Top.dec_inc_prop (Lambda nat (App eq_refl nat gen_var_1))))"
-dec_inc_prop_tree = utils.parenStringToLists(dec_inc_prop_string)
-dec_inc_prop_dag = toplistToDAG(dec_inc_prop_tree)
-print(dec_inc_prop_dag)
-plotGraph(nx.DiGraph(dec_inc_prop_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/dec_inc_prop_dag.png]]
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/dec_inc_prop_num_motifs.png'
-sizes = getNumMotifs(dec_inc_prop_dag, repeat=12)
-plotLineGraph(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/dec_inc_prop_num_motifs.png]]
-
-DeBruijin is not quite what we are looking for -- is replacing the names inside of the body,
- but we want global names that can be pointed to
-This global unique thing is different from alpha renaming
-Also a sort of preemptive alpha renaming and only of closed terms
-
-Keep a dictionary during parse, which is passed around with replacement names
-Do not pass around, because variable names will incremement in levels -- can get several diff at same level with same name
-Modify global dictionary
-
-Should I keep a dictionary of names of strings?
-If names then I will be able to plug and play in curry use of names
-
-build_lambda
-build_prod
-build_let_in
-build_fix_fun
-build_inductive_name
-
-*** Check num direct loops
-**** Count cycles
-
-#+BEGIN_SRC python :session :results output silent
-
-def countCycles(dag):
-    count = 0
-    for n in dag:
-        children = dag[n]
-        for ch in children:
-            grandchildren = dag[ch]
-            if n in grandchildren:
-                #print(n)
-                count += 1
-    return count
-
-def getAllCycles(dag):
-    matches = []
-    for n in dag:
-        children = dag[n]
-        for child in children:
-            grandchildren = dag[child]
-            if n in grandchildren:
-                matches.append({n,child})
-    return matches
-
-
-def getNumCycles(dag, repeat=1, check_dag=True, theorem_name=None):
-      new_dag = dag.copy()
-      num_motifs = []
-      num_cycles = []
-      print('0', nx.is_directed_acyclic_graph(nx.DiGraph(dag)))
-      for i in range(repeat):
-          matches = getAllFeedForwardMatches(new_dag)
-          num_motifs.append(len(matches))
-          num_cycles.append(countCycles(new_dag)/2)
-          if matches:
-              match = list(matches)[0]
-              new_dag = removeMatch(match, new_dag)
-          if check_dag:
-              print(str(i+1), nx.is_directed_acyclic_graph(nx.DiGraph(new_dag)))
-          if theorem_name:
-              plotGraph(nx.DiGraph(new_dag),
-                                './Images/'+theorem_name+'_dag_compressed_'+str(i+1),
-                                label=True)
-      return num_motifs, num_cycles
-
-#+END_SRC
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/dec_inc_num_cycles.png'
-num_motifs, num_cycles = getNumCycles(dec_inc_dag, repeat=10)
-plotLineGraphs([num_motifs, num_cycles], outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/dec_inc_num_cycles.png]]
-
-**** sqrt2_not_rational
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'sqrt2_not_rational'
-outfile = 'Images/'+theorem_name+'_num_cycles.png'
-sqrt2_dag = toplistToDAG(utils.sqrt2_tree, 'sqrt2_not_rational')
-motifs_and_cycles = getNumCycles(sqrt2_dag, check_dag = False, repeat=400)
-plotLineGraphs(motifs_and_cycles, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/sqrt2_not_rational_num_cycles.png]]
-[[file:Images/sqrt2_not_rational_gen_num_cycles.png]]
-
-**** sqrt2_not_rational_d3
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'sqrt2_not_rational_d3'
-outfile = 'Images/'+theorem_name+'_num_cycles.png'
-#sqrt2_d3_dag = toplistToDAG(sqrt2_d3_tree)
-#motifs_and_cycles = getNumCycles(sqrt2_d3_dag, check_dag = False, repeat=1500)
-#plotLineGraphs(motifs_and_cycles, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/sqrt2_not_rational_d3_num_cycles.png]]
-
-**** sqrt2_not_rational_d4
-
-#+BEGIN_SRC python :session :results file
-theorem_name = 'sqrt2_not_rational_d4'
-outfile = 'Images/'+theorem_name'_num_cycles.png'
-#sqrt2_d4_tree = utils.theoremNameToLists('sqrt2_not_rational',depth=4)
-#sqrt2_d4_dag = toplistToDAG(sqrt2_d4_tree)
-#motifs_and_cycles = getNumCycles(sqrt2_d4_dag, check_dag = False, repeat=2000)
-#plotLineGraphs(motifs_and_cycles, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/sqrt2_not_rational_d3_num_cycles.png]]
-
-
-
-**** nat equality
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/eq_dag.png'
-eq_string = "(Top (Definition Top.eq_nat (Lambda nat (App Coq.Init.Datatypes.nat_ind (Lambda nat (App eq nat gen_var_3 gen_var_3)) (App eq_refl nat O) (Lambda nat (Lambda (App eq nat gen_var_4 gen_var_4) (App eq_refl nat (App S gen_var_4)))) gen_var_4))))"
-eq_tree = utils.parenStringToLists(eq_string)
-eq_dag = toplistToDAG(eq_tree)
-plotGraph(nx.DiGraph(eq_dag), outfile, label=True)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/eq_dag.png]]
-
-
-
-#+BEGIN_SRC python :session :results file
-outfile = 'Images/eq_num_cycles.png'
-sizes = getNumCycles(eq_dag, theorem_name='eq', repeat=15)
-plotLineGraphs(sizes, outfile)
-outfile
-#+END_SRC
-
-#+RESULTS:
-[[file:Images/eq_num_cycles.png]]

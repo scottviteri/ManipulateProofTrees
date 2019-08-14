@@ -12,7 +12,7 @@
 
 4. Pythagorean Theorem
  Gabriel Braun (GeoCoq.Tarski_dev.Ch15_lengths)
- Having trouble with axioms in context
+ ProofSourceFiles/pythagoras.v
 
 5. Prime Number Theorem
  Source not provided
@@ -96,8 +96,8 @@
  ProofSourceFiles/Alt_PI_eq.v
 
 27. Sum of the Angles of a Triangle
- Boutry, Gries, Narboux (in GeoCoq/Meta_theory/Parallel_postulates/Euclid) 
- This directory of the library does not exist
+ Boutry, Gries, Narboux (in GeoCoq.Axioms.parallel_postulates) 
+ ProofSourceFiles/postulate_of_existence_of_a_triangle_whose_angles_sum_to_two_rights.v 
 
 28. Pascal’s Hexagon Theorem
  Magaud and Narboux (in contribs/ProjectiveGeometry/plane/hexamys): 
@@ -133,11 +133,11 @@
  ProofSourceFiles/Taylor.v
 
 36. Brouwer Fixed Point Theorem
- Could not find source
+ Source not provided
 
 37. The Solution of a Cubic
  Frédéric Chardard (file on https://madiot.fr/coq100/)
- Has extra prints
+ ProofSourceFiles/Cardan_Tartaglia.v
 
 38. Arithmetic Mean/Geometric Mean
  Jean-Marie Madiot (file on https://madiot.fr/coq100/)
@@ -184,8 +184,8 @@
  Source not provided
 
 51. Wilson’s Theorem
- Laurent Théry (in contribs/SumOfTwoSquare/Wilson): 
- Having trouble importing from SumOfTwoSquare
+ unknown (Inria, Microsoft) (in mathcomp/ssreflect/binomial) 
+ ProofSourceFiles/Wilson.v
 
 52. The Number of Subsets of a Set
  unknown (Inria, Microsoft) (in mathcomp/ssreflect/finset): 
@@ -238,7 +238,7 @@
  Cannot build coqtail
 
 65. Isosceles Triangle Theorem
- GeoCoq team (GeoCoq in triangle.v) 
+ GeoCoq team (on https://madiot.fr/coq100/) 
  ProofSourceFiles/isosceles_conga.v
 
 66. Sum of a Geometric Series
@@ -254,11 +254,11 @@
  Error in source
 
 69. Greatest Common Divisor Algorithm
- The Coq development team (in standard library, ZArith/Znumtheory): 
+ The Coq development team (in standard library, ZArith/Znumtheory) 
+ ProofSourceFiles/Zgcd_is_gcd.v
 
 70. The Perfect Number Theorem
  Source not provided
- ProofSourceFiles/Zgcd_is_gcd.v
 
 71. Order of a Subgroup
  unknown (Laurent Théry?) (in mathcomp/fingroup/fingroup): 
@@ -270,7 +270,7 @@
 
 73. Ascending or Descending Sequences
  Florent Hivert (https://github.com/hivert/Coq-Combi) 
- Trouble building source
+ Trouble building source -- I believe the library names are incorrect or outdated
 
 74. The Principle of Mathematical Induction
  built-in (definition of natural numbers in Coq's standard library: Coq/Init/Datatypes) 
@@ -357,8 +357,8 @@
  ProofSourceFiles/inclusion_exclusion.v
 
 97. Cramer’s Rule
- Georges Gonthier et al. (coqfinitgroup/matrix)
- Cannot find this library
+ Georges Gonthier et al. (mathcomp.algebra.matrix)
+ ProofSourceFiles/mul_adj_mx.v
 
 98. Bertrand’s Postulate
  Laurent Théry (in contribs/Bertrand/Bertrand) 
@@ -369,4 +369,3 @@
 
 100. Descartes Rule of Signs
  No proof provided
-

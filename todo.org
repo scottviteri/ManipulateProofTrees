@@ -20,8 +20,10 @@
 * TODO Calculate Louvain modularity
   Get diff between real and nulls
 
-Compare mathematica graph to dag to generated
- Got mathematica dependency graph file
- Generate comparable graph
- 
- Import dependency graph file
+* DONE Compare mathematica graph to dag to generated
+* DONE Compare orig, rand, generated, book 
+
+* TODO Get modularities back
+* TODO calculate alpha
+* DONE Fix directionality of generated graphs
+* TODO Plot pagerank beta w/ different parameter values

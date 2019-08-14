@@ -1,0 +1,14 @@
+(* info auto: *)
+(*external*) (apply IZR_le, Zle_bool_imp_le, eq_refl) (in real).
+(* info auto: *)
+unfold not (in core).
+ intro.
+ simple apply H.
+  simple apply INR_eq (in real).
+   assumption.
+(* info auto: *)
+unfold not (in core).
+ intro.
+ simple apply H.
+  simple apply INR_eq (in real).
+   assumption.
