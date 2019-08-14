@@ -1,0 +1,1 @@
+{"theorem_name": "Euler_exp_totient", "depth": 2, "alpha": 1.7124471517634092, "beta": 2.0032521395129517, "modularity": 0.7181995285583296}

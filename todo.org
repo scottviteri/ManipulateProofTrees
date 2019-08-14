@@ -23,7 +23,15 @@
 * DONE Compare mathematica graph to dag to generated
 * DONE Compare orig, rand, generated, book 
 
-* TODO Get modularities back
-* TODO calculate alpha
+* DONE get modularities back
+* DONE calculate alpha
 * DONE Fix directionality of generated graphs
-* TODO Plot pagerank beta w/ different parameter values
+* DONE pagerank beta w/ different parameter values
+
+* TODO plot gen graph alpha surface
+* TODO export full statistics for each theorem
+
+How should I export statistics?
+ProofStatistics/theorem_name/dx.txt
+ json.write
+

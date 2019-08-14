@@ -1,0 +1,1 @@
+{"theorem_name": "Bertrand", "depth": 1, "alpha": 1.743380047888773, "beta": 2.7965208473132, "modularity": 0.6267576126333715}

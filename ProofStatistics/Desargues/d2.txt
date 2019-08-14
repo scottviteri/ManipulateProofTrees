@@ -1,0 +1,1 @@
+{"theorem_name": "Desargues", "depth": 2, "alpha": 1.633787803987158, "beta": 1.4786474586082732, "modularity": 0.7370994106621197}

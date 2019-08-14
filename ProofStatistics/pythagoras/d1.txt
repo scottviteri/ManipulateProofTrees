@@ -1,0 +1,1 @@
+{"theorem_name": "pythagoras", "depth": 1, "alpha": 2.0407328203071726, "beta": 1.524183498170379, "modularity": 0.5201694755761387}

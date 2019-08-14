@@ -1,0 +1,1 @@
+{"theorem_name": "Euler_Poincare_criterion", "depth": 1, "alpha": 2.2004065140016524, "beta": 3.1400612139600472, "modularity": 0.4813019390581712}

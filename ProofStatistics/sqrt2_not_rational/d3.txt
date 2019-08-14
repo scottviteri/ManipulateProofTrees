@@ -1,0 +1,1 @@
+{"theorem_name": "sqrt2_not_rational", "depth": 3, "alpha": 1.5683589781099951, "beta": 1.3369906203977864, "modularity": 0.6898660219057838}

@@ -1,0 +1,1 @@
+{"theorem_name": "triangle", "depth": 1, "alpha": 1.7134626039160257, "beta": 3.6264342942762324, "modularity": 0.6630179871002118}

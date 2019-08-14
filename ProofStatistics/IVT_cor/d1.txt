@@ -1,0 +1,1 @@
+{"theorem_name": "IVT_cor", "depth": 1, "alpha": 1.922578042994989, "beta": 2.3423016427497, "modularity": 0.5544801512287725}

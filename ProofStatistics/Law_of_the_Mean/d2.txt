@@ -1,0 +1,1 @@
+{"theorem_name": "Law_of_the_Mean", "depth": 2, "alpha": 1.8517917169318374, "beta": 1.0340515307924478, "modularity": 0.7276015270132905}

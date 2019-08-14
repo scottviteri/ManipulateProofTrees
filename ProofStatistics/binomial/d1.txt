@@ -1,0 +1,1 @@
+{"theorem_name": "binomial", "depth": 1, "alpha": 2.0076757363727937, "beta": 0.9669350109378904, "modularity": 0.5882095690744336}

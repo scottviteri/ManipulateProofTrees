@@ -1,0 +1,1 @@
+{"theorem_name": "pytha_thm3", "depth": 1, "alpha": 1.804690174112248, "beta": 1.921578066460773, "modularity": 0.549180120363328}

@@ -1,0 +1,1 @@
+{"theorem_name": "reals_not_countable", "depth": 2, "alpha": 1.587296337278112, "beta": 4.470546315026274, "modularity": 0.7454358624124964}

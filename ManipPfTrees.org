@@ -35,6 +35,8 @@ import re
 import community
 from scipy.special import digamma
 from scipy.optimize import fsolve
+import powerlaw
+import cylouvain
 
 #+END_SRC
 
@@ -480,7 +482,7 @@ theorem_names = [
   "Q_countable",
   "pythagoras",
   "Goedel'sIncompleteness1st",
-  "Quadratic_reciprocity",
+  "Quadratic_reciprocity", # really big
   "Euler_exp_totient",
   "Euler_Poincare_criterion",
   "FTC1",
@@ -510,7 +512,7 @@ theorem_names = [
   "fun_power_series_conv_IR",
   "Zgcd_is_gcd",
   "Lagrange",
-  "Sylow's_theorem",
+  "Sylow's_theorem", # big
   "nat_ind",
   "Law_of_the_Mean",
   "Cauchy_Schwarz_inequality",
@@ -530,11 +532,11 @@ theorem_names = [
 #              None,1, None,None, 2,1,4,1,None,None,None, None,None]
 
 max_depths = [2 for x in theorem_names]
-for (theorem_name, max_depth) in zip(theorem_names[-13:], max_depths[-13:]):
+for (theorem_name, max_depth) in zip(theorem_names[9:], max_depths[9:]):
   depth = max_depth if max_depth else 1
   exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
 
-#exportDAGs("mul_adj_mx", max_depth=1, num_replicas=5, num_iterations=10000)
+exportDAGs("sqrt2_not_rational", max_depth=2, num_replicas=5, num_iterations=10000)
 
 #library_names = ['Arith']
 #for library_name in library_names:
@@ -797,9 +799,10 @@ pageRankRandFileName(theorem_name, depth)
 #+BEGIN_SRC python :session :results output silent
 
 def getModularity(dag):
-   graph = nx.Graph(dag)
-   partition = community.best_partition(graph)
-   return community.modularity(partition, graph)
+    graph = nx.Graph(dag)
+    partition = cylouvain.best_partition(graph)
+    modularity = cylouvain.modularity(partition, graph)
+    return modularity
 
 def getModularitiesFileName(theorem_name, depth, mod_libs=False):
     return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'modularities.png'
@@ -864,7 +867,6 @@ def createGraph(m, p, q, num_iterations):
                 if random.random() < q:
                     for ancestor in nx.algorithms.dag.ancestors(d,x):
                         d.add_edge('v'+str(i),ancestor)
-    #assert(nx.is_directed_acyclic_graph(d))
     return {k:set(v) for k,v in nx.convert.to_dict_of_lists(d).items()}
 
 def plotDegreeDist(graph, in_or_out, outfile):
@@ -898,7 +900,8 @@ outfile
 
 #+BEGIN_SRC python :session :results file
 outfile, in_or_out = 'genGraph_degree_dist.png', 'in'
-graph = createGraph(3,.3,.33,4000)
+#graph = createGraph(3,.3,.33,7000)
+graph = importDAG('./ProofDAGs/gen_graph.txt')
 plotDegreeDistLogLog(graph, in_or_out, outfile)
 outfile
 #+END_SRC
@@ -906,18 +909,62 @@ outfile
 #+RESULTS:
 [[file:genGraph_degree_dist.png]]
 
+#+BEGIN_SRC python :session :results file
+outfile = './Images/gen_graph_alpha_p_mq.png'
+
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+#ax.view_init(elev=30.,azim=90)
+
+def f(p,m):
+    q = 1.0/m
+    graph = createGraph(m,p,q,500)
+    degree_dist = list(getDegreeDist(graph, 'in').values())
+    alpha = powerlaw.Fit(degree_dist).power_law.alpha
+    return alpha
+
+# Make data.
+Ps = np.arange(0.05, 1.0, 0.1) # p
+Ms = np.arange(1, 10, 1) # m
+Xmesh, Ymesh = np.meshgrid(Ps, Ms)
+Z = np.array([[f(p,m) for p in Ps] for m in Ms])
+
+# Plot the surface.
+surf = ax.plot_surface(Xmesh, Ymesh, Z, cmap=cm.coolwarm,
+                       linewidth=0, antialiased=False)
+
+# Customize the z axis.
+#ax.set_zlim(-1.01, 1.01)
+ax.zaxis.set_major_locator(LinearLocator(10))
+ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+# Add a color bar which maps values to colors.
+fig.colorbar(surf, shrink=0.5, aspect=5)
+
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_graph_alpha_p_mq.png]]
+
+
+
 *** Export Graph
 
 #+BEGIN_SRC python :session :results output silent
-graph = createGraph(3,.3,.33,4000)
+graph = createGraph(3,.3,.33,10000)
 exportGenGraph(graph)
 #+END_SRC
 
 *** Plot PageRank
 
 #+BEGIN_SRC python :session :results file
-graph = createGraph(3,.3,.33,3000)
+#graph = createGraph(3,.3,.33,3000)
+graph = importDAG('./ProofDAGs/gen_graph.txt')
 p_out = sorted(getPageRank(graph).values())[::-1]
+print('beta:',estimateBeta(p_out)[0])
 plotLineGraphLogLog(p_out, './Images/gen_graph_pagerank.png')
 './Images/gen_graph_pagerank.png'
 #+END_SRC
@@ -927,8 +974,8 @@ plotLineGraphLogLog(p_out, './Images/gen_graph_pagerank.png')
 
 #+BEGIN_SRC python :session :results file
 betas = []
-for p in map(lambda x:x/50.0, range(1,30)):
-    graph = createGraph(3,p,.33,1000)
+for p in map(lambda x:x/50.0, range(1,50)):
+    graph = createGraph(3,p,.33,500)
     p_out = sorted(getPageRank(graph).values())[::-1]
     betas.append(estimateBeta(p_out))
 
@@ -1003,24 +1050,24 @@ def plotDegreeDistsLogLog(vals, outfile):
 #+END_SRC
 
 #+BEGIN_SRC python :session :results file
-outfile = 'Images/Euclid_compare_outdegrees.png'
+outfile = 'Images/Euclid_compare_indegrees.png'
 
 #g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
 #g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
 #g2 = importDAG('./ProofDAGs/gen_graph.txt')
 #g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
-#
-d1 = sparseToDense(getDegreeDist(g1,'out'))
-d_rand = sparseToDense(getDegreeDist(g_rand,'out'))
-d2 = sparseToDense(getDegreeDist(g2,'out'))
-d3 = sparseToDense(getDegreeDist(g3,'out'))
-#plotDegreeDistsLogLog([d1,d_rand,d2,d3], outfile)
-plotLineGraphsLogLog([d1,d_rand,d2,d3], outfile)
+
+#d1 = sparseToDense(getDegreeDist(g1,'in'))
+#d_rand = sparseToDense(getDegreeDist(g_rand,'in'))
+#d2 = sparseToDense(getDegreeDist(g2,'in'))
+#d3 = sparseToDense(getDegreeDist(g3,'in'))
+plotDegreeDistsLogLog([d1,d_rand,d2,d3], outfile)
+#plotLineGraphsLogLog([d1,d_rand,d2,d3], outfile)
 outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:Images/Euclid_compare_outdegrees.png]]
+[[file:Images/Euclid_compare_indegrees.png]]
 
 *** PageRank
 
@@ -1036,7 +1083,7 @@ outfile = 'Images/Euclid_compare_pagerank.png'
 #p_rand = sorted(getPageRank(g_rand).values())[::-1]
 #p2 = sorted(getPageRank(g2).values())[::-1]
 #p3 = sorted(getPageRank(g3).values())[::-1]
-print("Betas:", list(map(estimateBeta,[p1,p_rand,p2,p3])))
+#print("Betas:", list(map(estimateBeta,[p1,p_rand,p2,p3])))
 plotLineGraphsLogLog([p1,p_rand,p2,p3], outfile)
 outfile
 #+END_SRC
@@ -1050,12 +1097,57 @@ outfile
 outfile = 'Images/Euclid_compare_modularity.png'
 
 #g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+#g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
 #g2 = importDAG('./ProofDAGs/gen_graph.txt')
 #g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
 
-m1 = getModularity(g1)
-m2 = getModularity(g2)
-m3 = getModularity(g3)
+# too big
+m1 = getModularityFast(g1)
+#m_rand = getModularity(g_rand)
+#m2 = getModularity(g2)
+#m3 = getModularity(g3)
 
-print(m1, m3, m3)
+#print(m1, m_rand, m2, m3)
+#+END_SRC
+
+*** All Statistics
+
+#+BEGIN_SRC python :session :results output silent
+
+def getProofStatistics(theorem_name, depth):
+    theorem_dag = importDAG('./ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt')
+    degree_dist = list(getDegreeDist(theorem_dag, 'in').values())
+    alpha = powerlaw.Fit(degree_dist).power_law.alpha
+    pagerank_dist = sorted(getPageRank(theorem_dag).values())[::-1]
+    beta = estimateBeta(pagerank_dist)[0]
+    modularity = getModularity(theorem_dag)
+    #generated_graph = importDAG('./ProofDAGs/gen_graph.txt')
+    #gen_modularity = getModularity(generated_graph)
+    return {'theorem_name':theorem_name,'depth':depth,
+            'alpha':alpha,'beta':beta,'modularity':modularity}
+
+def exportStatistics(stats):
+    outfolder = './ProofStatistics/'+stats['theorem_name']+'/'
+    if not os.path.exists(outfolder):
+        os.mkdir(outfolder)
+    with open(outfolder+'d'+str(stats['depth'])+'.txt','w') as f:
+        json.dump(stats, f)
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name, depth = 'sqrt2_not_rational', 1
+print(getProofStatistics(theorem_name, depth))
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name, depth = 'sqrt2_not_rational', 3
+exportStatistics(getProofStatistics(theorem_name, depth))
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+depth = 2
+for theorem_name in theorem_names[4:]:
+    print('theorem_name:',theorem_name)
+    exportStatistics(getProofStatistics(theorem_name, depth))
 #+END_SRC

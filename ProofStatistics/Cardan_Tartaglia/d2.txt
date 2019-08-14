@@ -1,0 +1,1 @@
+{"theorem_name": "Cardan_Tartaglia", "depth": 2, "alpha": 2.00929595837348, "beta": 0.6905535563950832, "modularity": 0.6991956651867337}

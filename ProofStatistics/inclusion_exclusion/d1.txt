@@ -1,0 +1,1 @@
+{"theorem_name": "inclusion_exclusion", "depth": 1, "alpha": 2.121196079235655, "beta": 0.5733946477082239, "modularity": 0.6435649267921746}

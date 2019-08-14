@@ -1,0 +1,1 @@
+{"theorem_name": "bertrand_ballot", "depth": 1, "alpha": 2.106037608933481, "beta": 1.061892832421679, "modularity": 0.6125183648657331}

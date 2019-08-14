@@ -1,0 +1,1 @@
+{"theorem_name": "Q_countable", "depth": 2, "alpha": 1.8877344636207796, "beta": 1.7797461301936974, "modularity": 0.6507593780152092}

@@ -1,0 +1,1 @@
+{"theorem_name": "Pigeonhole", "depth": 1, "alpha": 2.5134215534535245, "beta": 5.524329078292298, "modularity": 0.4957320601851857}

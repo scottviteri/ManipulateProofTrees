@@ -1,0 +1,1 @@
+{"theorem_name": "mul_adj_mx", "depth": 1, "alpha": 2.3116479484634676, "beta": 3.0386954106380943, "modularity": 0.4026143666215363}

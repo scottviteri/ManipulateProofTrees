@@ -1,0 +1,1 @@
+{"theorem_name": "Taylor", "depth": 1, "alpha": 1.7964829986072155, "beta": 1.4365446424263475, "modularity": 0.5678129252167752}

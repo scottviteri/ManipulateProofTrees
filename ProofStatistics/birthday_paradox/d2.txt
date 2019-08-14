@@ -1,0 +1,1 @@
+{"theorem_name": "birthday_paradox", "depth": 2, "alpha": 1.9537139485290602, "beta": 0.8649980511990157, "modularity": 0.6516888782818735}

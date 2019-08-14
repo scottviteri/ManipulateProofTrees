@@ -1,0 +1,1 @@
+{"theorem_name": "Cayley_Hamilton", "depth": 2, "alpha": 1.893683165020823, "beta": 1.1279876083312266, "modularity": 0.6664953467860409}
