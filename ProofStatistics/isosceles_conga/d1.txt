@@ -1,1 +1,0 @@
-{"theorem_name": "isosceles_conga", "depth": 1, "alpha": 2.3366200539597, "beta": 2.6414417332814555, "modularity": 0.3859271599796383}

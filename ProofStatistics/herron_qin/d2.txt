@@ -1,1 +1,0 @@
-{"theorem_name": "herron_qin", "depth": 2, "alpha": 1.5735803760166847, "beta": 0.9568497387983323, "modularity": 0.667142768607592}

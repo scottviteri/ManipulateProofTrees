@@ -1,1 +1,0 @@
-{"theorem_name": "Zgcd_is_gcd", "depth": 2, "alpha": 1.8129656466911777, "beta": 1.9160208378447448, "modularity": 0.6512599157778384}

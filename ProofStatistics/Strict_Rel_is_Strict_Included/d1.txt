@@ -1,1 +1,0 @@
-{"theorem_name": "Strict_Rel_is_Strict_Included", "depth": 1, "alpha": 1.9887243260629797, "beta": 3.830677189660788, "modularity": 0.4906347554630598}

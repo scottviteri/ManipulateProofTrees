@@ -1,1 +1,0 @@
-{"theorem_name": "card_powerset", "depth": 1, "alpha": 2.0035287393480434, "beta": 0.820540757993457, "modularity": 0.5241535434655619}

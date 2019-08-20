@@ -1,1 +1,0 @@
-{"theorem_name": "Alt_PI_eq", "depth": 1, "alpha": 1.9254096697994934, "beta": 1.0309165828467588, "modularity": 0.6457372073824118}

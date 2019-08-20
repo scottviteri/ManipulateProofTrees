@@ -1,1 +1,0 @@
-{"theorem_name": "is_hexamy", "depth": 2, "alpha": 2.1130191406374723, "beta": 3.8487274136687772, "modularity": 0.525080688542227}

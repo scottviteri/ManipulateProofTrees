@@ -1,1 +1,0 @@
-{"theorem_name": "four_color", "depth": 2, "alpha": 1.6125059304301042, "beta": 5.549335167912783, "modularity": 0.746591696618211}

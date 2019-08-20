@@ -1,1 +1,0 @@
-{"theorem_name": "Zis_gcd_bezout", "depth": 2, "alpha": 1.763277084500325, "beta": 2.334957991211896, "modularity": 0.7068915903046078}

@@ -1,1 +1,0 @@
-{"theorem_name": "divisors_correct", "depth": 2, "alpha": 1.5192971583122081, "beta": 0.842620802854716, "modularity": 0.7012622004611408}

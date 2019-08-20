@@ -1,1 +1,0 @@
-{"theorem_name": "Liouville_theorem", "depth": 1, "alpha": 1.7186069422149357, "beta": 3.3687512251004437, "modularity": 0.6646976941630526}

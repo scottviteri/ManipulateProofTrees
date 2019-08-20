@@ -1,1 +1,0 @@
-{"theorem_name": "Goedel'sIncompleteness1st", "depth": 2, "alpha": 1.8886205673241032, "beta": 1.5312759229421955, "modularity": 0.6471746552742349}

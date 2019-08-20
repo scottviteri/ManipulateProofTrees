@@ -1,1 +1,0 @@
-{"theorem_name": "Sylow's_theorem", "depth": 1, "alpha": 1.6660160010720517, "beta": 0.9284585308872436, "modularity": 0.6164162886937875}

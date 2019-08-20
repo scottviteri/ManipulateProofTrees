@@ -1,1 +1,0 @@
-{"theorem_name": "fun_power_series_conv_IR", "depth": 1, "alpha": 1.9668989380328208, "beta": 2.192955040041298, "modularity": 0.6382682321145136}

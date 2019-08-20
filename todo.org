@@ -40,4 +40,5 @@ Fix the createGraph (allow mult arrows)
 ** Copy code from max dist to axioms, and tweak the return fxn
 * TODO plot using distribution from min to max depth for all paths
 
-Explore use of modularity gen graph
+* TODO Explore use of modularity gen graph
+** Figure out how to increase modularity -- not currently working

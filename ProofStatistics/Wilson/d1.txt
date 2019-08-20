@@ -1,1 +1,0 @@
-{"theorem_name": "Wilson", "depth": 1, "alpha": 2.067094155839131, "beta": 1.001668435032354, "modularity": 0.6223578582626287}

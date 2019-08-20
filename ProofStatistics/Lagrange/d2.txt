@@ -1,1 +1,0 @@
-{"theorem_name": "Lagrange", "depth": 2, "alpha": 1.8967314064497796, "beta": 2.283725930529626, "modularity": 0.6615620426386031}

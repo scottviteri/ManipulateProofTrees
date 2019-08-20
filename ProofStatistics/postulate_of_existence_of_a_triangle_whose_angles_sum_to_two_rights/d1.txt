@@ -1,1 +1,0 @@
-{"theorem_name": "postulate_of_existence_of_a_triangle_whose_angles_sum_to_two_rights", "depth": 1, "alpha": 2.408503615336456, "beta": 3.866822655497132, "modularity": 0.3451770995767427}

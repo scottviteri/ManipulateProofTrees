@@ -1,1 +1,0 @@
-{"theorem_name": "Cauchy_Schwarz_inequality", "depth": 1, "alpha": 2.200660364982477, "beta": 1.0409930639333422, "modularity": 0.5907892913928624}

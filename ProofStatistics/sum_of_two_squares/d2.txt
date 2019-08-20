@@ -1,1 +1,0 @@
-{"theorem_name": "sum_of_two_squares", "depth": 2, "alpha": 1.9699390912157049, "beta": 6.8304241833037596, "modularity": 0.5803979238754325}
