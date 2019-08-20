@@ -41,7 +41,6 @@ import cylouvain
 #+END_SRC
 
 ** Create theorem dags from unsubbed representations
-
 *** Convert individual theorem tree to graph
 
 #+BEGIN_SRC python :session :results output silent
@@ -79,11 +78,6 @@ def isShallowSubgraph(dag1, dag2):
 assert(isShallowSubgraph({'App': {'1','2'}}, {'App1':{'1','2'}}) == 'App1')
 assert(not isShallowSubgraph({'App':{'1','2'}}, {'App1':{'1','3'}}))
 
-#+END_SRC
-
-
-#+BEGIN_SRC python :session :results output
-
 def listToDAGHelper(tree, out_dag, cic_count):
     if not isinstance(tree, list):
         out_dag[tree] = set()
@@ -112,16 +106,6 @@ def checkEq(d1, d2):
         if d1[k] != d2[k]: return False
     return True
 
-
-a = ['App','2','2']
-b = ['App','2',a]
-c = ['App',b,b]
-
-#utils.ev_4_tree = utils.theoremNameToLists('ev_4', depth=2)
-
-# did we want this (App3)?
-assert(checkEq(listToDAG(c)[0],
-               {'2': set(), 'App1': {'2'}, 'App2': {'2', 'App1'}, 'App3': {'App2'}}))
 
 assert(checkEq(
         listToDAG(utils.ev_4_tree[1][2])[0],
@@ -285,7 +269,6 @@ outfile = './Images/'+theorem_name+'_DAG.png'
 [[file:./Images/birthday_paradox_DAG.png]]
 
 ** Generate random DAG's with same degree distribution
-
 *** Generate random replica DAG's with same arities
 
 Topological sort
@@ -436,7 +419,7 @@ def exportDAGs(theorem_name, max_depth, num_replicas, num_iterations, mod_libs=F
 def exportLibDAG(library_name, max_depth, num_replicas, num_iterations, limit=None, mod_libs=False):
     for depth in range(1, max_depth+1):
         dag = libNameToDAG(library_name, depth=depth, mod_libs=mod_libs, limit=limit)
-        exportOrigAndReplicas(dag, library_name, num_replicas, depth=depth, mod_libs=mod_libs)
+        exportOrigAndReplicas(dag, library_name, num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
 
 def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
     if not os.path.exists('./ProofTrees/euclid_book_d'+str(depth)+'.txt'):
@@ -531,17 +514,17 @@ theorem_names = [
 #max_depths = [4,3,2,2,2,3,3,2,2,1,None, \
 #              None,1, None,None, 2,1,4,1,None,None,None, None,None]
 
-max_depths = [2 for x in theorem_names]
-for (theorem_name, max_depth) in zip(theorem_names[9:], max_depths[9:]):
-  depth = max_depth if max_depth else 1
-  exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
+#max_depths = [2 for x in theorem_names]
+#for (theorem_name, max_depth) in zip(theorem_names[9:], max_depths[9:]):
+#  depth = max_depth if max_depth else 1
+#  exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
 
-exportDAGs("sqrt2_not_rational", max_depth=2, num_replicas=5, num_iterations=10000)
+#exportDAGs("sqrt2_not_rational", max_depth=2, num_replicas=5, num_iterations=10000)
 
 #library_names = ['Arith']
 #for library_name in library_names:
-#  exportLibDAG(library_name, max_depth=1, num_replicas=5)
-#
+#  exportLibDAG(library_name, max_depth=1, num_replicas=5, num_iterations=10000)
+
 #exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
 
 #+END_SRC
@@ -629,6 +612,51 @@ def importRandDAGs(theorem_name, depth, mod_libs=False):
                     filter(lambda x: search_string in x,
                            os.listdir(folder_name)))
     return list(map(stringifyValues, map(importDAG, filenames)))
+
+def getBinIndex(val,bins):
+    for i in range(len(bins)):
+        if val < bins[i]: return i-1
+    return len(bins) - 1
+
+def plotHist(ax, vals, log=False, num_bins=20):
+    if log:
+        vals = list(filter(lambda x:x>0, vals))
+    bins = np.linspace(min(vals), max(vals), num_bins, endpoint=False)
+    bin_assignments = list(map(lambda x: getBinIndex(x,bins), vals))
+    num_in_bins = [0 for _ in bins]
+    for bin_assignment in bin_assignments:
+        num_in_bins[bin_assignment] += 1
+    print('bins', bins)
+    print('num_in_bins', num_in_bins)
+    if log:
+        ax.bar(np.log10(bins),np.log10(num_in_bins),align='center')
+    else:
+        ax.bar(bins,num_in_bins,align='center',width=(bins[1]-bins[0])/2.0)
+
+def plotDegreeDistsLogLog(vals, outfile):
+    figsize = (6,3*len(vals))
+    fig, axs = plt.subplots(len(vals), 1, sharex = True, figsize=figsize)
+    for i in range(len(vals)):
+        ax = axs[i]
+        norm = float(sum(vals[i]))
+        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
+                list(map(modifiedLog, map(lambda x: x/norm, vals[i]))), 'r+')
+        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
+                list(map(modifiedLog,
+                         map(lambda x: 1.0/((x+1.)*(x+2.)), range(len(vals[i]))))), 'b+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def plotOnTopLogLog(vals, outfile, figsize=(6,4)):
+    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+    axs.plot(list(map(modifiedLog, range(len(vals[0])))),
+             list(map(modifiedLog, vals[0])), 'r+')
+    axs.plot(list(map(modifiedLog, range(len(vals[1])))),
+             list(map(modifiedLog, vals[1])), 'b+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+
 
 #+END_SRC
 
@@ -720,19 +748,6 @@ getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
 #+RESULTS:
 [[file:./Images/gen_sqrt2_not_rational_d3_indegree_dist.png]]
 
-*** Count number of undirected loops
-
-#+BEGIN_SRC python :session :results output silent
-
-def countNumSimplePaths(dag):
-    undir_G = nx.Graph(dag)
-    total = 0
-    for x in dag:
-        total += len(list(nx.all_simple_paths(undir_G, x,x)))
-    return total
-
-#+END_SRC
-
 *** Pagerank
 **** Utils
 #+BEGIN_SRC python :session :results output silent
@@ -766,7 +781,6 @@ def plotRandPageRank(theorem_name, depth, mod_libs=False):
 
 def average(lst):
     return sum(lst)/len(lst)
-
 
 #+END_SRC
 
@@ -848,26 +862,168 @@ outfile
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_d2_modularities.png]]
 
+*** Entropy
+
+#+BEGIN_SRC python :session :results output silent
+
+def flipDAG(dag):
+    g = nx.DiGraph(dag)
+    rev_g = nx.DiGraph.reverse(g)
+    return {k:set(v) for k,v in nx.to_dict_of_lists(rev_g).items()}
+
+def getDescendants(dag):
+    def getDescendantsHelper(node, memo):
+        if node in memo:
+            return memo[node]
+        return set(dag[node]).union(*[getDescendantsHelper(child, memo) for child in dag[node]])
+    memo = {}
+    for node in list(nx.topological_sort(nx.DiGraph(dag)))[::-1]:
+        descendants = getDescendantsHelper(node, memo)
+        memo[node] = descendants
+    return memo
+
+def normalize(lst):
+    return [x/sum(lst) for x in lst]
+
+def normalizeDict(d):
+    return {k:v/sum(d.values()) for k,v in d.items()}
+
+def count(lst):
+    return {k:lst.count(k) for k in lst}
+
+def getEntropy(lst):
+    return -sum(map(lambda x: x*math.log(x,2), lst))
+
+def getClusterDist(descendants, partitions):
+    desc_partition_list = list(map(lambda x: partitions[x], descendants))
+    cluster_distribution = count(desc_partition_list)
+    return normalizeDict(cluster_distribution)
+
+def getFoci(dag):
+    descendants = getDescendants(dag)
+    ancestors = getDescendants(flipDAG(dag))
+    partitions = cylouvain.best_partition(nx.Graph(dag))
+    desc_entropies = {k: getEntropy(getClusterDist(ancestors[k], partitions).values()) for k in dag}
+    anc_entropies = {k: getEntropy(getClusterDist(descendants[k], partitions).values()) for k in dag}
+    return {k:desc_entropies[k] - anc_entropies[k] for k in dag}
+
+def findAllWithoutParents(dag):
+    all_vals = set().union(*dag.values())
+    return [x for x in dag if x not in all_vals]
+
+def getMinDepths(orig_dag):
+    dag = flipDAG(orig_dag)
+    d = {}
+    #top_sort = list(nx.topological_sort(nx.DiGraph(dag)))
+    roots = findAllWithoutParents(dag)
+    depth_count = 0
+    queue = [roots]
+    while queue:
+       current_layer = queue.pop(0)
+       for x in current_layer:
+           d[x] = depth_count
+       next_layer = list(set().union(*map(lambda x: dag[x], current_layer)) - set(d.keys()))
+       if next_layer:
+           queue.append(next_layer)
+       depth_count += 1
+    return d
+
+def getMaxDepths(dag):
+    def getMaxDepthHelper(node, memo):
+        if node in memo:
+            return memo[node]
+        if not dag[node]:
+            return 0
+        return max([getMaxDepthHelper(child, memo) for child in dag[node]]) + 1
+    memo = {}
+    for node in list(nx.topological_sort(nx.DiGraph(dag)))[::-1]:
+        depth = getMaxDepthHelper(node, memo)
+        if (node in memo and depth > memo[node]) or (node not in memo):
+            memo[node] = depth
+    return memo
+
+
+def plotScatterPlot(xs, ys, outfile, figsize=(6,4)):
+    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+    axs.plot(xs, ys, 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def removeGenVars(dag):
+    return {k:{x for x in v if 'gen_var' not in x} for k,v in dag.items() if 'gen_var' not in k}
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+sqrt2_dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+node = random.sample(sqrt2_dag.keys(), 1)[0]
+print(node, getFoci(sqrt2_dag)[node])
+#+END_SRC
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/focus_depth.png'
+dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+nodes = list(dag.keys())
+foci = getFoci(dag)
+depths = getMaxDepths(dag)
+plotScatterPlot([depths[n] for n in nodes], [foci[n] for n in nodes], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/focus_depth.png]]
+
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/copy_focus_depth.png'
+dag = genComparableGraph(importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt'), 200000)
+nodes = list(dag.keys())
+foci = getFoci(dag)
+depths = getMaxDepths(dag)
+plotScatterPlot([depths[n] for n in nodes], [foci[n] for n in nodes], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/copy_focus_depth.png]]
+
 ** DAG generative model
 *** Create DAG
 
 #+BEGIN_SRC python :session :results output silent
 
+def getDescendantsFromMemo(node, multidag, memo):
+    desc_set = set()
+    for child in multidag[node]:
+        desc_set = desc_set.union(memo[child])
+    return desc_set
+
+
 def createGraph(m, p, q, num_iterations):
-    d = nx.DiGraph()
+    d = {}
+    memo = {}
     for i in range(num_iterations):
-        d.add_node('v'+str(i))
-        if m >= d.number_of_nodes():
-            maybe_connect = d.nodes()
+        new = 'v'+str(i)
+        if m >= len(d):
+            maybe_connect = list(d.keys())
         else:
-            maybe_connect = random.sample(d.nodes(), m)
+            maybe_connect = random.sample(list(d.keys()), m)
+        d[new] = []
+        memo[new] = set()
         for x in maybe_connect:
             if random.random() < p:
-                d.add_edge('v'+str(i),x)
+                d[new].append(x)
+                memo[new].add(x)
+                memo[new] = memo[new].union(memo[x])
                 if random.random() < q:
-                    for ancestor in nx.algorithms.dag.ancestors(d,x):
-                        d.add_edge('v'+str(i),ancestor)
-    return {k:set(v) for k,v in nx.convert.to_dict_of_lists(d).items()}
+                    descendants = getDescendantsFromMemo(x,d,memo)
+                    for descendant in descendants: #nx.algorithms.dag.descendants(d,x):
+                        d[new].append(descendant)
+                        memo[new].add(descendant)
+                        memo[new] = memo[new].union(memo[descendant])
+    #print(nx.algorithms.dag.is_directed_acyclic_graph(nx.DiGraph(d)))
+    #print(memo)
+    return d
 
 def plotDegreeDist(graph, in_or_out, outfile):
    dist = getDegreeDist(graph, in_or_out)
@@ -882,13 +1038,69 @@ def exportGenGraph(graph):
     with open(outfile, 'w') as f:
         json.dump({k:list(v) for k,v in graph.items()}, f)
 
+def exportGenGraphModular(graph):
+    outfile = './ProofDAGs/gen_graph_modular.txt'
+    with open(outfile, 'w') as f:
+        json.dump({k:list(v) for k,v in graph.items()}, f)
+
+
 #+END_SRC
 
-*** Plot Graph
+*** Create modular generated DAG
+#+BEGIN_SRC python :session :results output silent
+
+def createGraphHighMod(m, p, q, num_iterations):
+    d = nx.DiGraph({'v0':set()})
+    #memo = {'v0':set()}
+    for i in range(1,num_iterations+1):
+        new = 'v'+str(i)
+        #print('new',new)
+        d.add_node(new)
+        #memo[new] = set()
+        x = None
+        for j in range(m):
+            if random.random() < p:
+                if x:
+                    #print('x',x)
+                    distances = {k:v for k,v in nx.shortest_path_length(d,target=x).items() if k != new}
+                    #print('distances',distances)
+                    all_nodes = list(d.nodes() - {new})
+                    connected_nodes = list(distances.keys() - {new})
+                    #print('connected_nodes',connected_nodes)
+                    probs = {k:1./len(all_nodes) for k in all_nodes}
+                    #print('p1',probs)
+                    for connected_node in connected_nodes:
+                        probs[connected_node] += 1.0/float(distances[connected_node]+1) if connected_node != x else 1.0
+                    #print('p2',probs)
+                    probs = list(map(lambda k: probs[k]/sum(probs.values()), all_nodes))
+                    #print('probs',probs)
+                    x = np.random.choice(all_nodes, 1, p=probs)[0]
+                else:
+                    x = random.sample(set(d.nodes())-{new},1)[0]
+                d.add_edge(new, x)
+                #memo[new].add(x)
+                #memo[new] = memo[new].union(memo[x])
+                if random.random() < q:
+                    #descendants = getDescendantsFromMemo(x,d,memo)
+                    descendants = nx.algorithms.dag.descendants(d,x)
+                    for descendant in descendants:
+                        d.add_edge(new, descendant)
+                        #memo[new].add(descendant)
+                        #memo[new] = memo[new].union(memo[descendant])
+    #print(nx.algorithms.dag.is_directed_acyclic_graph(nx.DiGraph(d)))
+    #print(memo)
+    return nx.to_dict_of_lists(d)
+
+#createGraphHighMod(3,.3,1./3,10)
+
+#+END_SRC
+
+*** Example gen graph plots
 
 #+BEGIN_SRC python :session :results file
-graph = createGraph(3,.5,.33,100)
 outfile = 'Images/genGraph.png'
+graph = createGraph(4,.3,.25,100)
+print(getModularity(graph))
 plotGraph(nx.DiGraph(graph), outfile)
 outfile
 #+END_SRC
@@ -896,18 +1108,60 @@ outfile
 #+RESULTS:
 [[file:Images/genGraph.png]]
 
+#+BEGIN_SRC python :session :results output silent
+graph = createGraph(4,.3,.25,2000)
+exportGenGraph(graph)
+#+END_SRC
+
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/genGraphModular.png'
+graph = createGraphHighMod(4,.3,.25,100)
+print(getModularity(graph))
+plotGraph(nx.DiGraph(graph), outfile)
+#plotGraph(nx.DiGraph({1:[2,2],2:[]}),outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/genGraphModular.png]]
+
+#+BEGIN_SRC python :session :results output silent
+graph = createGraphHighMod(4,.3,.25,2000)
+exportGenGraphModular(graph)
+#+END_SRC
+
 *** Plot Degree Distribution
+
+**** Normal gen graph
 
 #+BEGIN_SRC python :session :results file
 outfile, in_or_out = 'genGraph_degree_dist.png', 'in'
-#graph = createGraph(3,.3,.33,7000)
+#graph = createGraph(4,.3,.25,2000)
 graph = importDAG('./ProofDAGs/gen_graph.txt')
+print(getModularity(graph))
 plotDegreeDistLogLog(graph, in_or_out, outfile)
 outfile
 #+END_SRC
 
 #+RESULTS:
 [[file:genGraph_degree_dist.png]]
+
+**** Modular gen graph
+
+#+BEGIN_SRC python :session :results file
+outfile, in_or_out = 'genGraph_degree_dist_mod.png', 'in'
+#graph = createGraphHighMod(3,.3,1.0/3.0,2000)
+graph = importDAG('./ProofDAGs/gen_graph_modular.txt')
+print(getModularity(graph))
+plotDegreeDistLogLog(graph, in_or_out, outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:genGraph_degree_dist_mod.png]]
+
+**** Gen graph alphas plot
 
 #+BEGIN_SRC python :session :results file
 outfile = './Images/gen_graph_alpha_p_mq.png'
@@ -949,22 +1203,14 @@ outfile
 #+RESULTS:
 [[file:./Images/gen_graph_alpha_p_mq.png]]
 
-
-
-*** Export Graph
-
-#+BEGIN_SRC python :session :results output silent
-graph = createGraph(3,.3,.33,10000)
-exportGenGraph(graph)
-#+END_SRC
-
 *** Plot PageRank
 
+**** Plot distibution
+
 #+BEGIN_SRC python :session :results file
-#graph = createGraph(3,.3,.33,3000)
-graph = importDAG('./ProofDAGs/gen_graph.txt')
-p_out = sorted(getPageRank(graph).values())[::-1]
-print('beta:',estimateBeta(p_out)[0])
+#graph = importDAG('./ProofDAGs/gen_graph.txt')
+#p_out = sorted(getPageRank(graph).values())[::-1]
+#print('beta:',estimateBeta(p_out)[0])
 plotLineGraphLogLog(p_out, './Images/gen_graph_pagerank.png')
 './Images/gen_graph_pagerank.png'
 #+END_SRC
@@ -972,41 +1218,44 @@ plotLineGraphLogLog(p_out, './Images/gen_graph_pagerank.png')
 #+RESULTS:
 [[file:./Images/gen_graph_pagerank.png]]
 
-#+BEGIN_SRC python :session :results file
-betas = []
-for p in map(lambda x:x/50.0, range(1,50)):
-    graph = createGraph(3,p,.33,500)
-    p_out = sorted(getPageRank(graph).values())[::-1]
-    betas.append(estimateBeta(p_out))
+**** Plot beta values
 
-plotLineGraph(betas, './Images/gen_graph_beta_v_p.png')
+#+BEGIN_SRC python :session :results file
+#betas = []
+#for p in map(lambda x:x/50.0, range(1,50)):
+#    graph = createGraph(3,p,1.0/3.0,1000)
+#    p_out = sorted(getPageRank(graph).values())[::-1]
+#    betas.append(estimateBeta(p_out)[0])
+
+#plotLineGraph(betas, './Images/gen_graph_beta_v_p.png')
 './Images/gen_graph_beta_v_p.png'
 #+END_SRC
 
 #+RESULTS:
 [[file:./Images/gen_graph_beta_v_p.png]]
 
+**** Plot surface of beta values
+
 #+BEGIN_SRC python :session :results file
 outfile = './Images/gen_graph_beta_p_mq.png'
 
 fig = plt.figure()
 ax = fig.gca(projection='3d')
-ax.view_init(elev=30.,azim=90)
-#
-#
-#def f(p,m):
-#    q = 1.0/m
-#    graph = createGraph(m,p,q,500)
-#    p_out = sorted(getPageRank(graph).values())[::-1]
-#    beta = estimateBeta(p_out)
-#    return beta[0]
-#
-## Make data.
-#X = np.arange(0.05, 1.0, 0.05)
-#Y = np.arange(1, 20, 1) #m / q (from 1 to 10)
-#Xmesh, Ymesh = np.meshgrid(X, Y)
-#Z = np.array([[f(x,y) for x in X] for y in Y])
-#
+#ax.view_init(elev=30.,azim=90)
+
+def f(p,m):
+    q = 1.0/m
+    graph = createGraph(m,p,q,500)
+    p_out = sorted(getPageRank(graph).values())[::-1]
+    beta = estimateBeta(p_out)
+    return beta[0]
+
+# Make data.
+X = np.arange(0.05, 1.0, 0.1) #p
+Y = np.arange(1, 10, 1) #M (from 1 to 10)
+Xmesh, Ymesh = np.meshgrid(X, Y)
+Z = np.array([[f(x,y) for x in X] for y in Y])
+
 # Plot the surface.
 surf = ax.plot_surface(Xmesh, Ymesh, Z, cmap=cm.coolwarm,
                        linewidth=0, antialiased=False)
@@ -1027,49 +1276,74 @@ outfile
 #+RESULTS:
 [[file:./Images/gen_graph_beta_p_mq.png]]
 
+*** Plot and Compare Max Depths
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/compare_depth_dists.png'
+
+dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
+#permute_dag = genComparableGraph(dag, 200000)
+print(list(map(getModularity, [dag, gen_dag, permute_dag])))
+
+dag_depths = sorted(getMaxDepths(dag).values())[::-1]
+gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
+permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
+
+plt.figure()
+fig, axs = plt.subplots(3,1,sharex=True,figsize=(6,12))
+plotHist(axs[0], dag_depths)
+plotHist(axs[1], gen_dag_depths)
+plotHist(axs[2], permute_dag_depths)
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/compare_depth_dists.png]]
 
 ** Compare Euclid graphs
-*** Degree Dists
+*** Overlay generated and original degree distributions
 
-#+BEGIN_SRC python :session :results output silent
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/Euclid_compare_gen.png'
 
-def plotDegreeDistsLogLog(vals, outfile):
-    figsize = (6,3*len(vals))
-    fig, axs = plt.subplots(len(vals), 1, sharex = True, figsize=figsize)
-    for i in range(len(vals)):
-        ax = axs[i]
-        norm = float(sum(vals[i]))
-        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
-                list(map(modifiedLog, map(lambda x: x/norm, vals[i]))), 'r+')
-        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
-                list(map(modifiedLog,
-                         map(lambda x: 1.0/((x+1.)*(x+2.)), range(len(vals[i]))))), 'b+')
-    fig.tight_layout()
-    plt.savefig(outfile)
+#exportGenGraph(createGraph(4,.56,1.0/4.0,50000))
+#g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+#g2 = importDAG('./ProofDAGs/gen_graph.txt')
+#d1 = sparseToDense(getDegreeDist(g1,'in'))
+#d2 = sparseToDense(getDegreeDist(g2,'in'))
 
+#plotOnTopLogLog([d1,d2], outfile)
+outfile
 #+END_SRC
+
+#+RESULTS:
+[[file:Images/Euclid_compare_gen.png]]
+
+*** Compare orig, permuted, generated, and book version degrees
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/Euclid_compare_indegrees.png'
 
+exportGenGraph(createGraph(3,.265,1.0/3.0,50000))
+
 #g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
 #g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
-#g2 = importDAG('./ProofDAGs/gen_graph.txt')
+g2 = importDAG('./ProofDAGs/gen_graph.txt')
 #g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
 
 #d1 = sparseToDense(getDegreeDist(g1,'in'))
 #d_rand = sparseToDense(getDegreeDist(g_rand,'in'))
-#d2 = sparseToDense(getDegreeDist(g2,'in'))
+d2 = sparseToDense(getDegreeDist(g2,'in'))
 #d3 = sparseToDense(getDegreeDist(g3,'in'))
 plotDegreeDistsLogLog([d1,d_rand,d2,d3], outfile)
 #plotLineGraphsLogLog([d1,d_rand,d2,d3], outfile)
 outfile
 #+END_SRC
 
-#+RESULTS:
-[[file:Images/Euclid_compare_indegrees.png]]
-
-*** PageRank
+*** Compare orig, permuted, generated, and book version pageranks
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/Euclid_compare_pagerank.png'
@@ -1091,7 +1365,7 @@ outfile
 #+RESULTS:
 [[file:Images/Euclid_compare_pagerank.png]]
 
-*** Modularity
+*** Compare modularities
 
 #+BEGIN_SRC python :session :results output silent
 outfile = 'Images/Euclid_compare_modularity.png'
@@ -1102,7 +1376,7 @@ outfile = 'Images/Euclid_compare_modularity.png'
 #g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
 
 # too big
-m1 = getModularityFast(g1)
+m1 = getModularity(g1)
 #m_rand = getModularity(g_rand)
 #m2 = getModularity(g2)
 #m3 = getModularity(g3)
@@ -1151,3 +1425,33 @@ for theorem_name in theorem_names[4:]:
     print('theorem_name:',theorem_name)
     exportStatistics(getProofStatistics(theorem_name, depth))
 #+END_SRC
+
+*** Betweenness Centrality
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/centrality.png'
+
+#g1 = sqrt2_dag
+#g2 = createGraph(4,.56,1.0/5.0,4154)
+#
+#graph1 = nx.DiGraph(g1)
+#centrality_dist1 = normalize(sorted(nx.betweenness_centrality(graph1).values())[::-1])
+#graph2 = nx.DiGraph(g2)
+#centrality_dist2 = normalize(sorted(nx.betweenness_centrality(graph2).values())[::-1])
+
+#plotLineGraphs([centrality_dist1,centrality_dist2], outfile)
+#plotLineGraphsLogLog([centrality_dist1,centrality_dist2], outfile)
+
+plt.figure()
+fig, axs = plt.subplots(4,1,sharex=False,figsize=(6,12))
+plotHist(axs[0], centrality_dist1, log=False)
+plotHist(axs[1], centrality_dist1, log=True)
+plotHist(axs[2], centrality_dist2, log=False)
+plotHist(axs[3], centrality_dist2, log=True)
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/centrality.png]]

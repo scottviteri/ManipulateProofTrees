@@ -12,26 +12,32 @@
 
 * DONE Create DAG for library
 * DONE Remove utils from global namespace
-* TODO Find compressions in propositional logic
 * DONE Load different levels of theorem graphs (with rand and without) into a folder
-* TODO Do some Ising stuff on it
+* DONE some Ising stuff on it
   Simon is doing this
 * DONE Speed up random graph generation
-* TODO Calculate Louvain modularity
+* DONE Calculate Louvain modularity
   Get diff between real and nulls
 
 * DONE Compare mathematica graph to dag to generated
-* DONE Compare orig, rand, generated, book 
+* DONE Compare orig, rand, generated, book
 
 * DONE get modularities back
 * DONE calculate alpha
 * DONE Fix directionality of generated graphs
 * DONE pagerank beta w/ different parameter values
 
-* TODO plot gen graph alpha surface
-* TODO export full statistics for each theorem
+* DONE plot gen graph alpha surface
+* DONE export full statistics for each theorem
 
-How should I export statistics?
-ProofStatistics/theorem_name/dx.txt
- json.write
+Fix the createGraph (allow mult arrows)
 
+* TODO Speed up modularity gen graph
+** Memoize?
+* DONE Create function to find max distance to axioms
+* DONE graph -- remove depth consideration
+** Namely fix the getDescendants function -- how to take the downclosure
+** Copy code from max dist to axioms, and tweak the return fxn
+* TODO plot using distribution from min to max depth for all paths
+
+Explore use of modularity gen graph
