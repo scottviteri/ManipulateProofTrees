@@ -290,31 +290,190 @@ def getNodeIndegrees(theorem_dag):
 def getNodeOutdegrees(dag):
     return {k:len(v) for k,v in dag.items()}
 
-def genComparableGraph(theorem_dag, num_iterations):
-    dag = copy.deepcopy(theorem_dag)
-    num_nodes = len(dag)
-    top_sort = list(nx.topological_sort(nx.DiGraph(dag)))
+def flipDictionary(d):
+    unique_vals = set(d.values())
+    return {x:set([k for k in d if d[k]==x]) for x in unique_vals}
+
+def getDegreeDist(dag, in_or_out):
+    node_degrees = getNodeIndegrees(dag) if in_or_out == 'in' else getNodeOutdegrees(dag)
+    degrees_to_nodes = flipDictionary(node_degrees)
+    return {k:len(v) for k,v in degrees_to_nodes.items()}
+
+def getOutdegreeDist(dag):
+    node_outdegrees = {k:len(v) for k,v in dag.items()}
+    outdegrees_to_nodes = flipDictionary(node_outdegrees)
+    return {k:len(v) for k,v in outdegrees_to_nodes.items()}
+
+
+# correct, but increases modularity
+def genComparableGraphConservative(theorem_dag, num_iterations=None):
+    if not num_iterations:
+        num_iterations = 10 * len(theorem_dag)
+    dag = nx.DiGraph(theorem_dag)
+    top_sort = list(nx.topological_sort(dag))
     node_to_index = {v:i for i,v in enumerate(top_sort)}
-    for _ in range(num_iterations):
-        e1_end, e2_end = None, None
-        while not e1_end:
-            e1_start = random.choice(range(num_nodes))
-            e1_end_options = list(map(lambda v: node_to_index[v], dag[top_sort[e1_start]]))
-            if e1_end_options:
-                e1_end = random.choice(e1_end_options)
-        while not e2_end:
-            e2_start = random.choice(range(e1_end))
-            e2_end_options = list(filter(lambda x: x > e1_start,
-                                         map(lambda v: node_to_index[v], dag[top_sort[e2_start]])))
-            if e2_end_options:
-                e2_end = random.choice(e2_end_options)
-        #now switch
-        dag[top_sort[e1_start]].remove(top_sort[e1_end])
-        dag[top_sort[e1_start]].add(top_sort[e2_end])
-        dag[top_sort[e2_start]].remove(top_sort[e2_end])
-        dag[top_sort[e2_start]].add(top_sort[e1_end])
-    assert(nx.is_directed_acyclic_graph(nx.DiGraph(dag)))
+    #print('t',top_sort)
+    count = 0
+    while count < num_iterations:
+        l1 = list(range(len(top_sort)-3))
+        if not l1: continue
+        e1_start = random.choice(l1)
+        #print('l1',l1)
+        l2 = list(range(e1_start+1,len(top_sort)-2))
+        if not l2: continue
+        e2_start = random.choice(l2)
+        #print('l2',l2)
+        l3 = list(filter(lambda x: top_sort[x] in dag[top_sort[e1_start]],
+                         range(e2_start+1, len(top_sort))))
+        if not l3: continue
+        e1_end = random.choice(l3)
+        #print('l3',l3)
+        l4 = list(filter(lambda x: x != e1_end and top_sort[x] in dag[top_sort[e2_start]],
+                                           range(e2_start+1, len(top_sort))))
+        if not l4: continue
+        e2_end = random.choice(l4)
+        #print('l4',l4)
+        dag.remove_edge(top_sort[e1_start], top_sort[e1_end])
+        dag.add_edge(top_sort[e1_start], top_sort[e2_end])
+        dag.remove_edge(top_sort[e2_start], top_sort[e2_end])
+        dag.add_edge(top_sort[e2_start], top_sort[e1_end])
+        count += 1
+    assert(nx.is_directed_acyclic_graph(dag))
     return dag
+
+# correct, decreases modularity, too slow
+def genComparableGraphBruteForce(theorem_dag, num_iterations=None):
+    if not num_iterations:
+        num_iterations = 10 * len(theorem_dag)
+    dag = nx.DiGraph(theorem_dag)
+    count = 0
+    while count < num_iterations:
+        edges = list(dag.edges())
+        edges_to_flip = [edges[i] for i in random.sample(range(len(edges)),2)]
+        dag.remove_edge(*edges_to_flip[0])
+        dag.remove_edge(*edges_to_flip[1])
+        dag.add_edge(edges_to_flip[0][0], edges_to_flip[1][1])
+        dag.add_edge(edges_to_flip[1][0], edges_to_flip[0][1])
+        if nx.is_directed_acyclic_graph(dag):
+            count += 1
+        else:
+            dag.remove_edge(edges_to_flip[0][0], edges_to_flip[1][1])
+            dag.remove_edge(edges_to_flip[1][0], edges_to_flip[0][1])
+            dag.add_edge(*edges_to_flip[0])
+            dag.add_edge(*edges_to_flip[1])
+    assert(nx.is_directed_acyclic_graph(dag))
+    return dag
+
+
+# doesn't work <-- would need to update ancestors of all descendants
+#def genComparableGraph2(theorem_dag, num_iterations=None):
+#    if not num_iterations:
+#        num_iterations = 10 * len(theorem_dag)
+#    dag = nx.DiGraph(theorem_dag)
+#    flipped_dag = nx.DiGraph.reverse(dag)
+#    ancestors = getDescendants(flipped_dag)
+#    count = 0
+#    while count < num_iterations:
+#        e1,e2 = random.sample(dag.edges(),2)
+#        if (e2[1] not in ancestors[e1[0]].union({e1[0]})) and (e1[1] not in ancestors[e2[0]].union({e2[0]})) \
+#           and (e1[0] != e2[0]) and (e1[1] != e2[1]):
+#            p_dag = copy.deepcopy(dag)
+#            dag.remove_edge(*e1)
+#            dag.remove_edge(*e2)
+#            flipped_dag.remove_edge(*e1[::-1])
+#            flipped_dag.remove_edge(*e2[::-1])
+#            dag.add_edge(e1[0], e2[1])
+#            dag.add_edge(e2[0], e1[1])
+#            flipped_dag.add_edge(e2[1], e1[0])
+#            flipped_dag.add_edge(e1[1], e2[0])
+#            ancestors[e2[1]] = set().union(*[ancestors[p].union({p}) for p in flipped_dag[e2[1]]])
+#            ancestors[e1[1]] = set().union(*[ancestors[p].union({p}) for p in flipped_dag[e1[1]]])
+#            print('eq', ancestors == getDescendants(flipped_dag))
+#            if not (ancestors == getDescendants(flipped_dag)):
+#                print('edges', e1, e2)
+#                print('prev_dag', nx.to_dict_of_lists(p_dag))
+#                print('curr_dag', nx.to_dict_of_lists(dag))
+#                print('calc anc', ancestors)
+#                print('real anc', getDescendants(flipped_dag))
+#            count += 1
+#        if not nx.is_directed_acyclic_graph(dag):
+#            print('hello')
+#    return dag
+
+def getDescendantsLabeled(dag):
+    def getDescendantsLabeledHelper(node, memo):
+        if node in memo:
+            return memo[node]
+        return set(dag[node]).union(*[getDescendantsHelper(child, memo) for child in dag[node]])
+    memo = {}
+    for node in list(nx.topological_sort(nx.DiGraph(dag)))[::-1]:
+        descendants = getDescendantsHelper(node, memo)
+        memo[node] = descendants
+    return memo
+
+def getDescendants(dag):
+    def getDescendantsHelper(node, memo):
+        if node in memo:
+            return memo[node]
+        return set(dag[node]).union(*[getDescendantsHelper(child, memo) for child in dag[node]])
+    memo = {}
+    for node in list(nx.topological_sort(nx.DiGraph(dag)))[::-1]:
+        descendants = getDescendantsHelper(node, memo)
+        memo[node] = descendants
+    return memo
+
+def getDescendantsFromNode(node, dag):
+    return dag[node].union(*[getDescendantsFromNode(ch, dag) for ch in dag[node]])
+
+def getDescendantsFromNodePreserveOrder(node, dag):
+    queue = [node]
+    descendants = []
+    while queue:
+        n = queue.pop(0)
+        if n not in descendants:
+            descendants.append(n)
+            queue.extend(list(dag[n]))
+    return descendants
+
+
+a = {1:{2,3,4},2:{5,6},3:{},4:{7},5:{},6:{},7:{}}
+assert(getDescendants(a) ==
+    {5:set(), 6:set(), 2:{5, 6}, 3:set(), 7:set(), 4:{7}, 1:{2, 3, 4, 5, 6, 7}})
+
+def getLabeledDescendants(dag):
+    descendants = getDescendants(dag)
+    return {node:{ch:descendants[ch] for ch in children} for node,children in dag.items()}
+
+assert(getLabeledDescendants(a) ==
+    {1:{2:{5,6},3:set(),4:{7}},2:{5:set(),6:set()},3:{},4:{7:set()},5:{},6:{},7:{}})
+
+def genComparableGraph(theorem_dag, num_iterations = None):
+    if not num_iterations:
+        num_iterations = 10 * len(theorem_dag)
+    descendants = getDescendants(theorem_dag)
+    dag = nx.DiGraph(theorem_dag)
+    flipped_dag = nx.DiGraph.reverse(dag)
+    count = 0
+    while count < num_iterations:
+        old_start,target = random.choice(list(dag.edges()))
+        new_start_options = dag.nodes() - descendants[target].union({old_start, target})
+        new_start_options = set(filter(lambda x: target not in dag[x], new_start_options))
+        if new_start_options: #make sure not
+            dag.remove_edge(old_start, target)
+            flipped_dag.remove_edge(target, old_start)
+            old_start_ancestors = getDescendantsFromNodePreserveOrder(old_start, flipped_dag)
+            for ancestor in old_start_ancestors:
+                descendants[ancestor] = set().union(*[{n}.union(descendants[n]) for n in dag[ancestor]])
+            new_start = random.sample(new_start_options,1)[0]
+            dag.add_edge(new_start, target)
+            flipped_dag.add_edge(target, new_start)
+            new_start_ancestors = getDescendantsFromNodePreserveOrder(new_start, flipped_dag)
+            for ancestor in new_start_ancestors:
+                descendants[ancestor] = set().union(*[{n}.union(descendants[n]) for n in dag[ancestor]])
+            count += 1
+    assert (getDegreeDist(theorem_dag, 'in') == getDegreeDist(dag,'in'))
+    assert(nx.is_directed_acyclic_graph(dag))
+    return nx.to_dict_of_lists(dag)
 
 def genComparableGraphs(theorem_dag, num_iterations, num_graphs):
     return [genComparableGraph(theorem_dag, num_iterations) for _ in range(num_graphs)]
@@ -328,8 +487,7 @@ def genComparableGraphs(theorem_dag, num_iterations, num_graphs):
 outfile = './Images/ev_4_gen_DAG.png'
 ev_4_dag = toplistToDAG(utils.ev_4_tree,'ev_4')
 gen_ev_4_dag = genComparableGraph(ev_4_dag, num_iterations=100)
-plotGraphs(nx.DiGraph(ev_4_dag),
-                     nx.DiGraph(gen_ev_4_dag), outfile, label=True, figsize=(6,6))
+plotGraphs(nx.DiGraph(ev_4_dag), nx.DiGraph(gen_ev_4_dag), outfile, label=True, figsize=(6,6))
 outfile
 #+END_SRC
 
@@ -355,7 +513,7 @@ plotGraphs(nx.DiGraph(ev_8_dag),
 #+BEGIN_SRC python :session :results file
 outfile = './Images/ev_4_alt_gen_DAG.png'
 ev_4_alt_dag = toplistToDAG(utils.ev_4_alt_tree,'ev_4_alt')
-gen_ev_4_alt_dag = genComparableGraph(ev_4_alt_dag)
+gen_ev_4_alt_dag = genComparableGraph(ev_4_alt_dag,1000)
 plotGraphs(nx.DiGraph(ev_4_alt_dag),
                      nx.DiGraph(gen_ev_4_alt_dag), outfile, label=True, figsize=(8,8))
 
@@ -369,17 +527,16 @@ plotGraphs(nx.DiGraph(ev_4_alt_dag),
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'sqrt2_not_rational'
-outfile = './Images/'+theorem_name+'_gen_DAG.png'
-tree = utils.theoremNameToLists(theorem_name)
-dag = toplistToDAG(utils.sqrt2_tree, 'sqrt2_not_rational')
-gen_dag = genComparableGraph(dag, num_iterations=100) #P52 in values but not in keys
-plotGraphs(nx.DiGraph(dag),
-           nx.DiGraph(gen_dag), outfile, label=False, figsize=(8,8))
+#outfile = './Images/'+theorem_name+'_gen_DAG.png'
+#tree = utils.theoremNameToLists(theorem_name)
+#dag = toplistToDAG(utils.sqrt2_tree, 'sqrt2_not_rational')
+#gen_dag = genComparableGraph(dag)
+plotGraphs(nx.DiGraph(dag), gen_dag, outfile, label=False, figsize=(8,8))
 outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:./Images/sqrt2_not_rational_gen_DAG.png]]
+[[file:./Images/ev_4_alt_gen_DAG.png]]
 
 *** Export multiple replica DAG's
 **** Utils
@@ -543,11 +700,11 @@ theorem_name = 'ev_8'
 exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
 #+END_SRC
 
-**** ev_8_alt
+**** ev_8_alt(
 
 #+BEGIN_SRC python :session :results output silent
 theorem_name = 'ev_8_alt'
-exportDAGs(theorem_name, max_depth=5, num_replicas=5, num_iterations=10000)
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
 #+END_SRC
 
 ** DAG analysis
@@ -662,20 +819,6 @@ def plotOnTopLogLog(vals, outfile, figsize=(6,4)):
 **** Definitions
 
 #+BEGIN_SRC python :session :results output silent
-
-def flipDictionary(d):
-    unique_vals = set(d.values())
-    return {x:set([k for k in d if d[k]==x]) for x in unique_vals}
-
-def getDegreeDist(dag, in_or_out):
-    node_degrees = getNodeIndegrees(dag) if in_or_out == 'in' else getNodeOutdegrees(dag)
-    degrees_to_nodes = flipDictionary(node_degrees)
-    return {k:len(v) for k,v in degrees_to_nodes.items()}
-
-def getOutdegreeDist(dag):
-    node_outdegrees = {k:len(v) for k,v in dag.items()}
-    outdegrees_to_nodes = flipDictionary(node_outdegrees)
-    return {k:len(v) for k,v in outdegrees_to_nodes.items()}
 
 def sparseToDense(d):
     return [d[x] if x in d else 0 for x in range(max(d)+1)]
@@ -869,17 +1012,6 @@ def flipDAG(dag):
     rev_g = nx.DiGraph.reverse(g)
     return {k:set(v) for k,v in nx.to_dict_of_lists(rev_g).items()}
 
-def getDescendants(dag):
-    def getDescendantsHelper(node, memo):
-        if node in memo:
-            return memo[node]
-        return set(dag[node]).union(*[getDescendantsHelper(child, memo) for child in dag[node]])
-    memo = {}
-    for node in list(nx.topological_sort(nx.DiGraph(dag)))[::-1]:
-        descendants = getDescendantsHelper(node, memo)
-        memo[node] = descendants
-    return memo
-
 def normalize(lst):
     return [x/sum(lst) for x in lst]
 
@@ -974,7 +1106,7 @@ outfile
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/copy_focus_depth.png'
-dag = genComparableGraph(importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt'), 200000)
+dag = genComparableGraph(importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt'),1000)
 nodes = list(dag.keys())
 foci = getFoci(dag)
 depths = getMaxDepths(dag)
@@ -1322,14 +1454,14 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/compare_depth_dists.png'
 
-dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
-gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
-#permute_dag = genComparableGraph(dag, 200000)
-print(list(map(getModularity, [dag, gen_dag, permute_dag])))
-
-dag_depths = sorted(getMaxDepths(dag).values())[::-1]
-gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
-permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
+#dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+#gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
+#permute_dag = genComparableGraph(dag,1000)
+#print(list(map(getModularity, [dag, gen_dag, permute_dag])))
+#
+#dag_depths = sorted(getMaxDepths(dag).values())[::-1]
+#gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
+#permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
 
 plt.figure()
 fig, axs = plt.subplots(3,1,sharex=True,figsize=(6,12))
@@ -1380,7 +1512,7 @@ outfile = 'Images/compare_hist.png'
 dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
 gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
 gen_dag_high_mod = createGraphHighMod(4,.56,1.0/4.0,len(dag))
-permute_dag = genComparableGraph(dag, 200000)
+permute_dag = genComparableGraph(dag,500)
 print(list(map(getModularity, [dag, gen_dag, gen_dag_high_mod, permute_dag])))
 
 dag_depths = sorted(getMaxDepths(dag).values())[::-1]
@@ -1400,7 +1532,7 @@ outfile
 #+END_SRC
 
 #+RESULTS:
-[[file:Images/fdsa.png]]
+[[file:Images/compare_hist.png]]
 
 
 ** Compare Euclid graphs
@@ -1493,7 +1625,7 @@ m1 = getModularity(g1)
       theorem_dag = importDAG('./ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt')
       num_nodes = len(theorem_dag)
       modularity = getModularity(theorem_dag)
-      comparable_graphs = [genComparableGraph(theorem_dag, 10*num_nodes) for _ in range(100)]
+      comparable_graphs = [genComparableGraph(theorem_dag,100) for _ in range(100)]
       shuffle_modularities = list(map(getModularity, comparable_graphs))
       nulls = [createGraph(4,.56,.25,num_nodes) for _ in range(100)]
       null_modularities = list(map(getModularity, nulls))
