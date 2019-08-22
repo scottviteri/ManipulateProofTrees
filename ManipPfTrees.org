@@ -271,10 +271,6 @@ outfile = './Images/'+theorem_name+'_DAG.png'
 ** Generate random DAG's with same degree distribution
 *** Generate random replica DAG's with same arities
 
-Topological sort
-Find pair of edges
-Flip if still dag
-
 #+BEGIN_SRC python :session :results output silent
 
 def getNodeIndegrees(theorem_dag):
@@ -428,30 +424,24 @@ def getDescendantsFromNode(node, dag):
 def getDescendantsFromNodePreserveOrder(node, dag):
     queue = [node]
     descendants = []
+    descendants_set = set()
     while queue:
         n = queue.pop(0)
-        if n not in descendants:
+        if n not in descendants_set:
             descendants.append(n)
+            descendants_set.add(n)
             queue.extend(list(dag[n]))
     return descendants
-
 
 a = {1:{2,3,4},2:{5,6},3:{},4:{7},5:{},6:{},7:{}}
 assert(getDescendants(a) ==
     {5:set(), 6:set(), 2:{5, 6}, 3:set(), 7:set(), 4:{7}, 1:{2, 3, 4, 5, 6, 7}})
 
-def getLabeledDescendants(dag):
-    descendants = getDescendants(dag)
-    return {node:{ch:descendants[ch] for ch in children} for node,children in dag.items()}
-
-assert(getLabeledDescendants(a) ==
-    {1:{2:{5,6},3:set(),4:{7}},2:{5:set(),6:set()},3:{},4:{7:set()},5:{},6:{},7:{}})
-
 def genComparableGraph(theorem_dag, num_iterations = None):
     if not num_iterations:
         num_iterations = 10 * len(theorem_dag)
-    descendants = getDescendants(theorem_dag)
     dag = nx.DiGraph(theorem_dag)
+    descendants = getDescendants(dag)
     flipped_dag = nx.DiGraph.reverse(dag)
     count = 0
     while count < num_iterations:
@@ -475,8 +465,8 @@ def genComparableGraph(theorem_dag, num_iterations = None):
     assert(nx.is_directed_acyclic_graph(dag))
     return nx.to_dict_of_lists(dag)
 
-def genComparableGraphs(theorem_dag, num_iterations, num_graphs):
-    return [genComparableGraph(theorem_dag, num_iterations) for _ in range(num_graphs)]
+def genComparableGraphs(theorem_dag, num_graphs, num_iterations=None):
+    return [genComparableGraph(theorem_dag, num_iterations=num_iterations) for _ in range(num_graphs)]
 
 #+END_SRC
 
@@ -551,7 +541,7 @@ def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, num_iteration
     orig_out = outfolder+'d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
     with open(orig_out,'w') as f:
         json.dump({k:list(v) for k,v in theorem_dag.items()}, f)
-    gen_dags = genComparableGraphs(theorem_dag, num_iterations, num_replicas)
+    gen_dags = genComparableGraphs(theorem_dag, num_replicas, num_iterations)
     for i,g in enumerate(gen_dags):
         replica_out = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
         with open(replica_out, 'w') as f:
@@ -560,7 +550,7 @@ def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, num_iteration
 def exportReplicas(theorem_name, depth, num_replicas, num_iterations, mod_libs=False):
     outfolder = './ProofDAGs/'+theorem_name+'/'
     theorem_dag = importOrigDAG(theorem_name, depth)
-    gen_dags = genComparableGraphs(theorem_dag, num_iterations, num_replicas)
+    gen_dags = genComparableGraphs(theorem_dag, num_replicas, num_iterations)
     for i,g in enumerate(gen_dags):
         gen_file = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
         with open(gen_file, 'w') as f:
@@ -990,10 +980,9 @@ outfile = getModularitiesFileName(theorem_name, depth, mod_libs=mod_libs)
 
 tree = json.loads(open('/home/scottviteri/Downloads/elements.txt','r').read())
 dag = {x[0]:set(x[1]) for x in tree}
-rand_dags = genComparableGraphs(dag, 5)
+rand_dags = genComparableGraphs(dag, 5, num_iterations = 1000)
 
 orig_modularity = getModularity(dag)
-#print("orig modularity: ", orig_modularity)
 rand_modularities = list(map(getModularity, rand_dags))
 plotLineGraph([orig_modularity]+rand_modularities, outfile)
 
@@ -1122,37 +1111,27 @@ outfile
 
 #+BEGIN_SRC python :session :results output silent
 
-def getDescendantsFromMemo(node, multidag, memo):
-    desc_set = set()
-    for child in multidag[node]:
-        desc_set = desc_set.union(memo[child])
-    return desc_set
-
-
 def createGraph(m, p, q, num_iterations):
     d = {}
-    memo = {}
+    descendant_dict = {}
     for i in range(num_iterations):
         new = 'v'+str(i)
         if m >= len(d):
-            maybe_connect = list(d.keys())
+            potential_targets = list(d.keys())
         else:
-            maybe_connect = random.sample(list(d.keys()), m)
+            potential_targets = random.sample(list(d.keys()), m)
         d[new] = []
-        memo[new] = set()
-        for x in maybe_connect:
+        descendant_dict[new] = set()
+        for target in potential_targets:
             if random.random() < p:
-                d[new].append(x)
-                memo[new].add(x)
-                memo[new] = memo[new].union(memo[x])
-                if random.random() < q:
-                    descendants = getDescendantsFromMemo(x,d,memo)
-                    for descendant in descendants: #nx.algorithms.dag.descendants(d,x):
-                        d[new].append(descendant)
-                        memo[new].add(descendant)
-                        memo[new] = memo[new].union(memo[descendant])
+                d[new].append(target)
+                descendant_dict[new] = descendant_dict[new].union({target}, descendant_dict[target])
+            if random.random() < q:
+                for descendant in descendant_dict[target]:
+                    d[new].append(descendant)
+                    descendant_dict[new] = descendant_dict[new].union({descendant}, descendant_dict[descendant])
     #print(nx.algorithms.dag.is_directed_acyclic_graph(nx.DiGraph(d)))
-    #print(memo)
+    #print(descendant_dict)
     return d
 
 def plotDegreeDist(graph, in_or_out, outfile):
@@ -1180,91 +1159,31 @@ def exportGenGraphModular(graph):
 
 #+BEGIN_SRC python :session :results output silent
 
-#def createGraphHighMod(m, p, q, num_iterations, modularity = 1):
-#    d = nx.DiGraph({'v0':set()})
-#    #memo = {'v0':set()}
-#    for i in range(1,num_iterations+1):
-#        new = 'v'+str(i)
-#        #print('new',new)
-#        d.add_node(new)
-#        #memo[new] = set()
-#        x = None
-#        for j in range(m):
-#            if random.random() < p:
-#                if x:
-#                    #print('x',x)
-#                    distances = {k:v for k,v in nx.shortest_path_length(d,target=x).items() if k != new}
-#                    #print('distances',distances)
-#                    all_nodes = list(d.nodes() - {new})
-#                    connected_nodes = list(distances.keys() - {new})
-#                    #print('connected_nodes',connected_nodes)
-#                    probs = {k:1./len(all_nodes) for k in all_nodes}
-#                    #print('p1',probs)
-#                    for connected_node in connected_nodes:
-#                        probs[connected_node] += modularity/float(distances[connected_node]+1) if connected_node != x else 1.0
-#                    #print('p2',probs)
-#                    probs = list(map(lambda k: probs[k]/sum(probs.values()), all_nodes))
-#                    #print('probs',probs)
-#                    x = np.random.choice(all_nodes, 1, p=probs)[0]
-#                else:
-#                    x = random.sample(set(d.nodes())-{new},1)[0]
-#                d.add_edge(new, x)
-#                #memo[new].add(x)
-#                #memo[new] = memo[new].union(memo[x])
-#                if random.random() < q:
-#                    #descendants = getDescendantsFromMemo(x,d,memo)
-#                    descendants = nx.algorithms.dag.descendants(d,x)
-#                    for descendant in descendants:
-#                        d.add_edge(new, descendant)
-#                        #memo[new].add(descendant)
-#                        #memo[new] = memo[new].union(memo[descendant])
-#    #print(nx.algorithms.dag.is_directed_acyclic_graph(nx.DiGraph(d)))
-#    #print(memo)
-#    return nx.to_dict_of_lists(d)
-#
-##createGraphHighMod(3,.3,1./3,10)
-
 # do algorithm as originally intended
-def createGraphHighMod(m, p, q, num_iterations):
+def createGraphHighMod(m, p, q, num_iterations, connectivity=1.0):
     d = nx.DiGraph({'v0':set()})
-    memo = {'v0':set()}
+    descendants_dict = {'v0':set()}
+    last_target = 'v0'
     for i in range(1,num_iterations+1):
         new = 'v'+str(i)
-        #print('new',new)
         d.add_node(new)
-        memo[new] = set()
-        x = None
+        descendants_dict[new] = set()
         for j in range(m):
+            distances = {k:v for k,v in nx.shortest_path_length(d,target=last_target).items() if k != new}
+            all_nodes = list(d.nodes() - {new})
+            connected_nodes = list(distances.keys())
+            probs = normalizeDict({node:(1.0/float(distances[node]+1)+connectivity if node in connected_nodes else connectivity) for node in all_nodes})
+            prob_list = [probs[x] for x in probs]
+            target = np.random.choice(all_nodes, 1, p=prob_list)[0]
             if random.random() < p:
-                if x:
-                    #print('x',x)
-                    distances = {k:v for k,v in nx.shortest_path_length(d,target=x).items() if k != new}
-                    #print('distances',distances)
-                    all_nodes = list(d.nodes() - {new})
-                    connected_nodes = list(distances.keys() - {new})
-                    #print('connected_nodes',connected_nodes)
-                    probs = {k:0 for k in all_nodes}
-                    #print('p1', probs)
-                    for connected_node in connected_nodes:
-                        probs[connected_node] += 1.0/float(distances[connected_node]+1) if connected_node != x else 1.0
-                    #print('p2',probs)
-                    probs = list(map(lambda k: probs[k]/sum(probs.values()), all_nodes))
-                    #print('probs',probs)
-                    x = np.random.choice(all_nodes, 1, p=probs)[0]
-                else:
-                    x = random.sample(set(d.nodes())-{new},1)[0]
-                d.add_edge(new, x)
-                memo[new].add(x)
-                memo[new] = memo[new].union(memo[x])
-                if random.random() < q:
-                    descendants = getDescendantsFromMemo(x,nx.to_dict_of_lists(d),memo)
-                    #descendants = nx.algorithms.dag.descendants(d,x)
-                    for descendant in descendants:
-                        d.add_edge(new, descendant)
-                        memo[new].add(descendant)
-                        memo[new] = memo[new].union(memo[descendant])
-    #print(nx.algorithms.dag.is_directed_acyclic_graph(nx.DiGraph(d)))
-    #print(memo)
+                d.add_edge(new, target)
+                descendants_dict[new] = descendants_dict[new].union({target}, descendants_dict[target])
+                last_target = target
+            if random.random() < q:
+                for descendant in descendants_dict[target]:
+                    d.add_edge(new, descendant)
+                    descendants_dict[new] = descendants_dict[new].union({descendant}, descendants_dict[descendant])
+    assert(nx.algorithms.dag.is_directed_acyclic_graph(d))
     return nx.to_dict_of_lists(d)
 
 
@@ -1274,7 +1193,7 @@ def createGraphHighMod(m, p, q, num_iterations):
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/genGraph.png'
-graph = createGraph(4,.56,.25,1000)
+graph = createGraph(4,.56,.25,100)
 print(getModularity(graph))
 plotGraph(nx.DiGraph(graph), outfile)
 outfile
@@ -1284,14 +1203,14 @@ outfile
 [[file:Images/genGraph.png]]
 
 #+BEGIN_SRC python :session :results output silent
-graph = createGraph(4,.3,.25,2000)
+graph = createGraph(4,.56,.25,2000)
 exportGenGraph(graph)
 #+END_SRC
 
 
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/genGraphModular.png'
-graph = createGraphHighMod(4,.3,.25,500)
+graph = createGraphHighMod(4,.3,.25,300,connectivity=5)
 print(getModularity(graph))
 plotGraph(nx.DiGraph(graph), outfile)
 outfile
@@ -1381,11 +1300,11 @@ outfile
 **** Plot distibution
 
 #+BEGIN_SRC python :session :results file
+outfile = './Images/gen_graph_pagerank.png'
 #graph = importDAG('./ProofDAGs/gen_graph.txt')
 #p_out = sorted(getPageRank(graph).values())[::-1]
-#print('beta:',estimateBeta(p_out)[0])
-plotLineGraphLogLog(p_out, './Images/gen_graph_pagerank.png')
-'./Images/gen_graph_pagerank.png'
+#plotLineGraphLogLog(p_out, outfile)
+outfile
 #+END_SRC
 
 #+RESULTS:
@@ -1396,10 +1315,10 @@ plotLineGraphLogLog(p_out, './Images/gen_graph_pagerank.png')
 #+BEGIN_SRC python :session :results file
 #betas = []
 #for p in map(lambda x:x/50.0, range(1,50)):
-#    graph = createGraph(3,p,1.0/3.0,1000)
+#    graph = createGraph(4,p,1.0/4.0,1000)
 #    p_out = sorted(getPageRank(graph).values())[::-1]
 #    betas.append(estimateBeta(p_out)[0])
-
+#
 #plotLineGraph(betas, './Images/gen_graph_beta_v_p.png')
 './Images/gen_graph_beta_v_p.png'
 #+END_SRC
@@ -1509,16 +1428,16 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/compare_hist.png'
 
-dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
-gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
-gen_dag_high_mod = createGraphHighMod(4,.56,1.0/4.0,len(dag))
-permute_dag = genComparableGraph(dag,500)
-print(list(map(getModularity, [dag, gen_dag, gen_dag_high_mod, permute_dag])))
-
-dag_depths = sorted(getMaxDepths(dag).values())[::-1]
-gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
-gen_dag_high_mod_depths = sorted(getMaxDepths(gen_dag_high_mod).values())[::-1]
-permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
+#dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+#gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
+#gen_dag_high_mod = createGraphHighMod(4,.56,1.0/4.0,len(dag))
+#permute_dag = genComparableGraph(dag,500)
+#print(list(map(getModularity, [dag, gen_dag, gen_dag_high_mod, permute_dag])))
+#
+#dag_depths = sorted(getMaxDepths(dag).values())[::-1]
+#gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
+#gen_dag_high_mod_depths = sorted(getMaxDepths(gen_dag_high_mod).values())[::-1]
+#permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
 
 plt.figure()
 fig, axs = plt.subplots(4,1,sharex=True,figsize=(6,12))
@@ -1541,13 +1460,14 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/Euclid_compare_gen.png'
 
-#exportGenGraph(createGraph(4,.56,1.0/4.0,50000))
 #g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+#exportGenGraph(createGraph(4,.56,1.0/4.0,int(len(g1)/10)))
+#
 #g2 = importDAG('./ProofDAGs/gen_graph.txt')
 #d1 = sparseToDense(getDegreeDist(g1,'in'))
 #d2 = sparseToDense(getDegreeDist(g2,'in'))
 
-#plotOnTopLogLog([d1,d2], outfile)
+plotOnTopLogLog([d1,d2], outfile)
 outfile
 #+END_SRC
 
@@ -1580,16 +1500,16 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/Euclid_compare_pagerank.png'
 
-#g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
-#g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
-#g2 = importDAG('./ProofDAGs/gen_graph.txt')
-#g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
+g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
+g2 = importDAG('./ProofDAGs/gen_graph.txt')
+g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
 
-#p1 = sorted(getPageRank(g1).values())[::-1]
-#p_rand = sorted(getPageRank(g_rand).values())[::-1]
-#p2 = sorted(getPageRank(g2).values())[::-1]
-#p3 = sorted(getPageRank(g3).values())[::-1]
-#print("Betas:", list(map(estimateBeta,[p1,p_rand,p2,p3])))
+p1 = sorted(getPageRank(g1).values())[::-1]
+p_rand = sorted(getPageRank(g_rand).values())[::-1]
+p2 = sorted(getPageRank(g2).values())[::-1]
+p3 = sorted(getPageRank(g3).values())[::-1]
+print("Betas:", list(map(estimateBeta,[p1,p_rand,p2,p3])))
 plotLineGraphsLogLog([p1,p_rand,p2,p3], outfile)
 outfile
 #+END_SRC
@@ -1624,10 +1544,11 @@ m1 = getModularity(g1)
   def getProofStatistics(theorem_name, depth):
       theorem_dag = importDAG('./ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt')
       num_nodes = len(theorem_dag)
+      print('num_nodes:', num_nodes)
       modularity = getModularity(theorem_dag)
-      comparable_graphs = [genComparableGraph(theorem_dag) for _ in range(100)]
+      comparable_graphs = [genComparableGraph(theorem_dag, len(theorem_dag)) for _ in range(10)]
       shuffle_modularities = list(map(getModularity, comparable_graphs))
-      nulls = [createGraph(4,.56,.25,num_nodes) for _ in range(100)]
+      nulls = [createGraph(4,.56,.25,num_nodes) for _ in range(10)]
       null_modularities = list(map(getModularity, nulls))
       return {'theorem_name':theorem_name,'depth':depth,
            'num_nodes':num_nodes,'modularity':modularity,
@@ -1655,7 +1576,7 @@ exportStatistics(getProofStatistics(theorem_name, depth))
 
 #+BEGIN_SRC python :session :results output silent
 depth = 1
-for theorem_name in theorem_names:
+for theorem_name in theorem_names[14:]:
     print('theorem_name:',theorem_name)
     exportStatistics(getProofStatistics(theorem_name, depth))
 #+END_SRC
@@ -1689,3 +1610,46 @@ outfile
 
 #+RESULTS:
 [[file:Images/centrality.png]]
+
+
+*** Degree stuff
+
+#+BEGIN_SRC python :session :results output silent
+
+def topSort(graph):
+    flipped_graph = flipDAG(graph)
+    orphans = [x for x in graph if not flipped_graph[x]]
+    roots = random.sample(orphans, len(orphans))
+    top_sort = []
+    top_sort_set = set()
+    queue = roots.copy()
+    while queue:
+        n = queue.pop(0)
+        if n not in top_sort_set:
+            top_sort.append(n)
+            top_sort_set.add(n)
+            children = graph[n]
+            queue.extend(random.sample(children, len(children)))
+    return top_sort
+
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results file
+outfile, in_or_out = 'alt_pi_outdegree.png', 'in'
+
+#graph_1 = nx.DiGraph(importDAG('./ProofDAGs/Alt_PI_eq/d1.txt'))
+#top_sort_1 = list(topSort(nx.to_dict_of_lists(graph_1)))
+#num_edges_1 = [graph_1.subgraph(top_sort_1[:i]).number_of_edges() for i in range(0, len(top_sort_1),10)]
+
+#tree = json.loads(open('/home/scottviteri/Downloads/elements.txt','r').read())
+#graph_2 = nx.DiGraph({x[0]:set(x[1]) for x in tree})
+#top_sort_2 = list(topSort(nx.to_dict_of_lists(graph_2)))
+#num_edges_2 = [graph_2.subgraph(top_sort_2[:i]).number_of_edges() for i in range(len(top_sort_2))]
+
+plotLineGraphs([num_edges_1, num_edges_2], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:alt_pi_outdegree.png]]
