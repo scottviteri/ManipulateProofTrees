@@ -41,4 +41,9 @@ Fix the createGraph (allow mult arrows)
 * TODO plot using distribution from min to max depth for all paths
 
 * TODO Explore use of modularity gen graph
-** Figure out how to increase modularity -- not currently working
+* DONE Figure out how to increase modularity -- not currently working
+   Only shift begin on arrow
+
+* TODO Answer Simon emails
+
+* TODO Write pieces of paper
