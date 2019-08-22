@@ -1576,7 +1576,7 @@ exportStatistics(getProofStatistics(theorem_name, depth))
 
 #+BEGIN_SRC python :session :results output silent
 depth = 1
-for theorem_name in theorem_names[14:]:
+for theorem_name in theorem_names[22:]:
     print('theorem_name:',theorem_name)
     exportStatistics(getProofStatistics(theorem_name, depth))
 #+END_SRC
