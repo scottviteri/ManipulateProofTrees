@@ -18,6 +18,7 @@ A collection of sample Coq proofs.
 
 Exported collection of reified proof trees from ./ProofSourceFiles.
 Export is handled by ./coq_proof_to_trees.sh, which depends on my local version of the git repo uwplse/CoqAST.
+Theorems are exported too a variety of depths, each with a variation on whether coq library names are expanded.
 
 ## ./Images
 
@@ -43,8 +44,12 @@ Output of GenerateDependencyGraphs.org
 
 ## ./utils.py
 
-Utilities used by both ManipProofTrees.org and ./GenerateDependencyGraph.org
+A collection of python functions used by both ManipProofTrees.org and ./GenerateDependencyGraph.org
 
 ## ./clean.sh
 
 Wipe all saved results from ManipProofTrees.org.
+
+## ./coq_proof_to_trees.sh
+
+Takes a theorem name as an argument. This theorem is pulled from ProofSourceFiles, and concatenated onto ./ProofSourceFiles/ExportProof.v. The output of coqc onto ./ProofSourceFiles/ExportProof.v is dumped to the ./ProofTrees/ directory.

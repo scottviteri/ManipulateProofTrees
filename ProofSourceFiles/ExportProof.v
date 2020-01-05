@@ -2,5 +2,4 @@ Add LoadPath "~/LocalSoftware/CoqAST/plugin/src/".
 Add LoadPath "./ProofSourceFiles".
 Require Import PrintAST.ASTPlugin.
 
-Require Import Arith.
-PrintAST neq_0_lt with depth 1.
+PrintAST IVT_core with depth 9 mod libs.

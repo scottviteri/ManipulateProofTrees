@@ -31,7 +31,7 @@ import utils
 #+END_SRC
 
 ** Graph plotting utils
-**** Dependency graph for a single root theorem
+*** Dependency graph for a single root theorem
 
 Goal: given a collection of theorems, create the list of theorems that they reference.
  Then use these theorems and lists to generate a directed graph.
@@ -81,7 +81,7 @@ assert(theoremToDependencyDict(
 
 #+RESULTS:
 
-**** Dependency graph for a list of theorems
+*** Dependency graph for a list of theorems
 
 #+BEGIN_SRC python :session :results output silent
 
@@ -121,7 +121,7 @@ assert(theoremListToDependencyDict(theorem_list) == d2)
 
 #+END_SRC
 
-**** Plot/Export graph for non-library theorems
+*** Plot/Export graph for non-library theorems
 
 #+BEGIN_SRC python :session :results output silent
 
@@ -155,7 +155,7 @@ def plotDepGraphFromTheoremName(theorem_name, depth=2, label=False, figsize=(4,4
 
 #+END_SRC
 
-**** Plot/Export graph for library theorems
+*** Plot/Export graph for library theorems
 
 #+BEGIN_SRC python :session :results output silent
 
@@ -188,7 +188,7 @@ def plotDepGraphFromLibraryName(library_name, depth=2, label=False, figsize = (8
 #+RESULTS:
 
 ** Plot dependency graphs for non-library theorems
-**** ev_8
+*** ev_8
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'ev_8'
@@ -199,7 +199,7 @@ theoremNameToOutfile(theorem_name)
 #+RESULTS:
 [[file:Images/ev_8_dependencies.png]]
 
-**** sqrt2_not_rational
+*** sqrt2_not_rational
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'sqrt2_not_rational'
@@ -210,7 +210,7 @@ theoremNameToOutfile(theorem_name)
 #+RESULTS:
 [[file:Images/sqrt2_not_rational_dependencies.png]]
 
-**** birthday_paradox
+*** birthday_paradox
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'birthday_paradox'
@@ -225,7 +225,7 @@ theoremNameToOutfile(theorem_name)
 Hypothesis about what is going on here:
  Library theorems have many more direct dependencies than the average Coq proof
 
-**** bertrand_ballot
+*** bertrand_ballot
 
 #+BEGIN_SRC python :session :results file
 theorem_name = 'bertrand_ballot'
@@ -237,7 +237,7 @@ theoremNameToOutfile(theorem_name)
 [[file:Images/bertrand_ballot_dependencies.png]]
 
 ** Plot dependency graphs for libraries
-**** Reals
+*** Reals
 
 #+BEGIN_SRC python :session :results file
 library_name = "Reals"
@@ -248,7 +248,7 @@ libNameToOutfile(library_name)
 #+RESULTS:
 [[file:Images/Reals_library_dependencies.png]]
 
-**** Arith
+*** Arith
 
 #+BEGIN_SRC python :session :results file
 library_name = "Arith"
@@ -259,7 +259,7 @@ libNameToOutfile(library_name)
 #+RESULTS:
 [[file:Images/Arith_library_dependencies.png]]
 
-**** ZArith
+*** ZArith
 
 #+BEGIN_SRC python :session :results file
 library_name = "ZArith"

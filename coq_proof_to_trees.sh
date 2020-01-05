@@ -3,7 +3,7 @@
 THEOREM=$1
 BASE=./ProofSourceFiles
 OUTDIR=./ProofTrees/${THEOREM}
-for DEPTH in 1 2 3 4 5 6;
+for DEPTH in 1 2 3 4 5 6 7 8 9 10;
 do
  cat $BASE/ExportProofBase.v > $BASE/ExportProof.v
  cat $BASE/${THEOREM}.v >> $BASE/ExportProof.v
