@@ -17,19 +17,19 @@ A collection of sample Coq proofs.
 ## ./ProofTrees
 
 Exported collection of reified proof trees from ./ProofSourceFiles.
-Export is handled by ./coq_proof_to_trees.sh, which depends on my local version of the git repo uwplse/CoqAST. 
+Export is handled by ./coq_proof_to_trees.sh, which depends on my local version of the git repo uwplse/CoqAST.
 
 ## ./Images
 
-The saved image outputs of computation in ManipPfTrees.org
+The saved image outputs of computation in ManipProofTrees.org
 
-## ./ManipPfTrees.org
+## ./ManipProofTrees.org
 
 Compress and analyze proof objects as a deduplified directed acyclic graph.
 
 ## ./ProofDAGs
 
-Output of ManipPfTrees
+Output of ManipProofTrees
 
 ## ./GenerateDependencyGraphs.org
 
@@ -43,8 +43,8 @@ Output of GenerateDependencyGraphs.org
 
 ## ./utils.py
 
-Utilities used by both ManipPfTrees.org and ./GenerateDependencyGraph.org
+Utilities used by both ManipProofTrees.org and ./GenerateDependencyGraph.org
 
 ## ./clean.sh
 
-Wipe all saved results from ManipPfTrees.org.
+Wipe all saved results from ManipProofTrees.org.

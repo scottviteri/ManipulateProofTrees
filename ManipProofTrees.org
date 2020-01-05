@@ -39,7 +39,6 @@ import powerlaw
 import cylouvain
 
 #+END_SRC
-
 ** Create theorem dags from unsubbed representations
 *** Convert individual theorem tree to graph
 
@@ -215,11 +214,11 @@ plotGraph(g,'./Images/'+theorem_name+'_DAG.png',label=True)
 **** ev_8
 
 #+BEGIN_SRC python :session :results file
-theorem_name = 'ev_8'
-g = nx.DiGraph(toplistToDAG(utils.ev_8_tree))
-outfile = './Images/'+theorem_name+'_DAG.png'
-plotGraph(g, outfile, label=True)
-outfile
+  theorem_name = 'ev_8'
+  g = nx.DiGraph(toplistToDAG(utils.ev_8_tree))
+  outfile = './Images/'+theorem_name+'_DAG.png'
+  plotGraph(g, outfile, label=True)
+  outfile
 #+END_SRC
 
 #+RESULTS:
@@ -532,7 +531,6 @@ outfile
 **** Utils
 
 #+BEGIN_SRC python :session :results output silent
-
 
 def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, num_iterations, depth=2, mod_libs=False):
     outfolder = './ProofDAGs/'+theorem_name+'/'
@@ -1453,7 +1451,6 @@ outfile
 #+RESULTS:
 [[file:Images/compare_hist.png]]
 
-
 ** Compare Euclid graphs
 *** Overlay generated and original degree distributions
 
@@ -1610,7 +1607,6 @@ outfile
 
 #+RESULTS:
 [[file:Images/centrality.png]]
-
 
 *** Degree stuff
 
