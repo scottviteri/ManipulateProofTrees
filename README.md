@@ -17,7 +17,7 @@ A collection of sample Coq proofs.
 ## ./ProofTrees
 
 Exported collection of reified proof trees from ./ProofSourceFiles.
-Export is handled by ./coq_proof_to_trees.sh, which depends on my local version of the git repo uwplse/CoqAST . I have not yet made this Coq plugin available on github.
+Export is handled by ./coq_proof_to_trees.sh, which depends on my local version of the git repo uwplse/CoqAST. 
 
 ## ./Images
 
