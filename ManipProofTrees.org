@@ -556,11 +556,14 @@ def exportReplicas(theorem_name, depth, num_replicas, num_iterations, mod_libs=F
 
 def exportDAGs(theorem_name, max_depth, num_replicas, num_iterations, mod_libs=False):
     print('theorem_name:', theorem_name)
+    last_size = 0
     for depth in range(1, max_depth+1):
-        tree = utils.theoremNameToLists(theorem_name, depth, mod_libs=mod_libs)
-        dag = toplistToDAG(tree, depth=depth)
-        print("depth ",depth, ":", "size ", len(list(dag.keys())))
-        exportOrigAndReplicas(dag, theorem_name, num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
+        if last_size < 10000:
+            tree = utils.theoremNameToLists(theorem_name, depth, mod_libs=mod_libs)
+            dag = toplistToDAG(tree, depth=depth)
+            last_size = len(list(dag.keys()))
+            print("depth ",depth, ":", "size ", last_size)
+            exportOrigAndReplicas(dag, theorem_name, num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
 
 def exportLibDAG(library_name, max_depth, num_replicas, num_iterations, limit=None, mod_libs=False):
     for depth in range(1, max_depth+1):
@@ -607,32 +610,32 @@ def geoTreesToDAGs(depth):
 #+BEGIN_SRC python :session :results output silent
 
 theorem_names = [
-  "FTA",
-  "Q_countable",
-  #"pythagoras",
-  "Goedel'sIncompleteness1st",
-  "Quadratic_reciprocity", # really big
-  "Euler_exp_totient",
-  "Euler_Poincare_criterion",
-  "FTC1",
-  "Liouville_theorem",
-  "sum_of_two_squares",
-  "reals_not_countable",
-  "pytha_thm3",
-  "CSB",
-  "Alt_PI_eq",
-  "postulate_of_existence_of_a_triangle_whose_angles_sum_to_two_rights",
-  "is_hexamy",
-  "bertrand_ballot",
-  "Pigeonhole",
-  "four_color",
-  "Taylor",
-  "Cardan_Tartaglia",
-  "binomial",
-  "Cayley_Hamilton",
-  "Wilson",
-  "card_powerset",
-  #"konigsberg_bridges", # <-- really big
+#  "FTA",
+#  "Q_countable",
+#  "pythagoras",
+#  "Goedel'sIncompleteness1st",
+#  "Quadratic_reciprocity", # really big
+#  "Euler_exp_totient",
+#  "Euler_Poincare_criterion",
+#  "FTC1",
+#  "Liouville_theorem",
+#  "sum_of_two_squares",
+#  "reals_not_countable",
+#  "pytha_thm3",
+#  "CSB",
+#  "Alt_PI_eq",
+#  "postulate_of_existence_of_a_triangle_whose_angles_sum_to_two_rights",
+#  "is_hexamy",
+#  "bertrand_ballot",
+#  "Pigeonhole",
+#  "four_color",
+#  "Taylor",
+#  "Cardan_Tartaglia",
+#  "binomial",
+#  "Cayley_Hamilton",
+#  "Wilson",
+#  "card_powerset",
+#  "konigsberg_bridges", # <-- really big
   "herron_qin",
   "Zis_gcd_bezout",
   "Ceva",
@@ -649,7 +652,7 @@ theorem_names = [
   "divisors_correct",
   "div3",
   "Desargues",
-  #"edivpP",
+  "edivpP",
   "triangle",
   "birthday_paradox",
   "inclusion_exclusion",
@@ -657,8 +660,9 @@ theorem_names = [
   "Bertrand"
 ]
 
+
 for theorem_name in theorem_names:
-  exportDAGs(theorem_name, max_depth=3, num_replicas=0, num_iterations=10)
+  exportDAGs(theorem_name, max_depth=1, num_replicas=0, num_iterations=10)
 
 
 #max_depths = [4,3,2,2,2,3,3,2,2,1,None, \

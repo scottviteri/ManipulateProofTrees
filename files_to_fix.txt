@@ -1,7 +1,5 @@
-EulerFormula
-
-mathcomp.solvable
-
 Reciprocity
 
-ProjectiveGeometry.Plane
+pythagoras
+
+Euler exp totient

@@ -1,0 +1,1 @@
+(Definition Coq.ZArith.Znumtheory.Zgcd_is_gcd (Lambda a_2 Z (Lambda b_22 Z (App Zis_gcd_intro a_2 b_22 (App Coq.ZArith.BinIntDef.Z.gcd a_2 b_22) (App Coq.ZArith.BinInt.Z.gcd_divide_l a_2 b_22) (App Coq.ZArith.BinInt.Z.gcd_divide_r a_2 b_22) (App Coq.ZArith.BinInt.Z.gcd_greatest a_2 b_22))))) 
