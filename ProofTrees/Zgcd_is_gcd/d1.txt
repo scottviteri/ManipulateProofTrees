@@ -1,1 +1,0 @@
-(Definition Coq.ZArith.Znumtheory.Zgcd_is_gcd (Lambda gen_var_1 Z (Lambda gen_var_2 Z (App Zis_gcd_intro gen_var_1 gen_var_2 (App Coq.ZArith.BinIntDef.Z.gcd gen_var_1 gen_var_2) (App Coq.ZArith.BinInt.Z.gcd_divide_l gen_var_1 gen_var_2) (App Coq.ZArith.BinInt.Z.gcd_divide_r gen_var_1 gen_var_2) (App Coq.ZArith.BinInt.Z.gcd_greatest gen_var_1 gen_var_2))))) 

@@ -1,0 +1,1654 @@
+#+TITLE: Manipulate Proof Trees
+#+OPTIONS: tex:t
+#+STARTUP: latexpreview
+#+LATEX_HEADER: \usepackage{qtree,tiks}
+
+* Manip Proof Trees
+
+** Imports
+
+#+BEGIN_SRC python :session :results output silent
+
+import utils
+import math
+import copy
+import itertools
+import pickle
+import ast
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D  # noqa: F401 unused import
+from matplotlib import cm
+from matplotlib.ticker import LinearLocator, FormatStrFormatter
+import numpy as np
+import json
+import functools
+import pdb
+import cProfile
+import subprocess
+import networkx as nx
+import os
+import random
+import re
+import community
+from scipy.special import digamma
+from scipy.optimize import fsolve
+import powerlaw
+import cylouvain
+
+#+END_SRC
+
+** Create theorem dags from unsubbed representations
+*** Convert individual theorem tree to graph
+
+#+BEGIN_SRC python :session :results output silent
+
+cic_constructors = ['App', 'Definition', 'Axiom', 'Lambda',
+                    'Cast', 'LetIn','Fix','CoFix',
+                    'CaseMatch', 'CaseBranches','Sort',
+                    'Prod','Inductive','Case','CoInductive',
+                    'Record','VMCast','DEFAULTcast','REVERTcast',
+                    'NATIVEcast','Var','Meta','Evar','Rel','Level',
+                    'Max','Universe','UnivInstance','Sort','Prop','Type',
+                    'Functions','Proj','Name','Anonymous']
+
+def constructorMatch(test, constructor):
+    return constructor == test[:len(constructor)]
+
+assert(constructorMatch('App1','App'))
+assert(not constructorMatch('App','App1'))
+
+cic_regex = re.compile("^"+"|".join(cic_constructors))
+def isConstructor(test):
+    return bool(cic_regex.match(test))
+
+assert(isConstructor('App1'))
+assert(isConstructor('Lambda2'))
+assert(isConstructor('Cast'))
+
+def isShallowSubgraph(dag1, dag2):
+    constructor, children = next(iter(dag1.items()))
+    for k2 in dag2:
+        if constructorMatch(k2, constructor) and children == dag2[k2]:
+            return k2
+    return False
+
+assert(isShallowSubgraph({'App': {'1','2'}}, {'App1':{'1','2'}}) == 'App1')
+assert(not isShallowSubgraph({'App':{'1','2'}}, {'App1':{'1','3'}}))
+
+def listToDAGHelper(tree, out_dag, cic_count):
+    if not isinstance(tree, list):
+        out_dag[tree] = set()
+        return out_dag, tree, cic_count
+    else:
+       root, children = tree[0], tree[1:]
+       mod_child_names = []
+       for child in children:
+           out_dag, name, cic_count = listToDAGHelper(child, out_dag, cic_count)
+           mod_child_names.append(name)
+       new_dag = {root: set(mod_child_names)}
+       root_new = isShallowSubgraph(new_dag, out_dag)
+       if not root_new:
+           cic_count[root] += 1
+           root_new = root + str(cic_count[root])
+           out_dag[root_new] = set(mod_child_names)
+    return out_dag, root_new, cic_count
+
+def listToDAG(tree):
+    return listToDAGHelper(tree, {}, {constr: 0 for constr in cic_constructors})
+
+def checkEq(d1, d2):
+    if d1.keys() != d2.keys():
+        return False
+    for k in d1:
+        if d1[k] != d2[k]: return False
+    return True
+
+
+assert(checkEq(
+        listToDAG(utils.ev_4_tree[1][2])[0],
+        {'ev_SS': set(), '2': set(), 'ExportProof.ev_2': set(), 'App1': set(['ev_SS', '2', 'ExportProof.ev_2'])}))
+
+assert(checkEq(listToDAG(['App',['App','2','2'],['App','2','2']])[0],
+               {'2': set(), 'App1': {'2'}, 'App2': {'App1'}}))
+
+assert(checkEq(
+        listToDAG(['App', ['App', '2', '2'], ['App', '2', ['App', '2', '2']]])[0],
+        {'2': set(), 'App1': {'2'}, 'App2': {'App1', '2'}, 'App3': {'App2', 'App1'}}
+       ))
+
+#+END_SRC
+
+#+RESULTS:
+
+*** Convert multiple theorems to DAG
+
+#+BEGIN_SRC python :session :results output silent
+
+def toplistToDAG(top_level_theorem, depth=2):
+    dag = {}
+    cic_count = {constr: 0 for constr in cic_constructors}
+    count = 0
+    for tree in top_level_theorem[1:]:
+        lemma_name, lemma_def = tree[1], tree[2]
+        dag, lemma_root, cic_count = listToDAGHelper(lemma_def, dag.copy(), cic_count.copy())
+        if count >= 1:
+            dag.pop(lemma_name, None)
+            for k,v in dag.items():
+                if lemma_name in v:
+                    dag[k] = {x if x != lemma_name else lemma_root for x in v}
+        else:
+            theorem_name = lemma_name
+        count += 1
+    return dag
+
+assert(toplistToDAG(utils.ev_4_tree)
+        == {'ev_SS': set(), '2': set(), 'App1': {'2', 'App2', 'ev_SS'}, 'O': set(),
+            'ev_0': set(), 'App2': {'ev_0', 'O', 'ev_SS'}})
+
+#+END_SRC
+
+*** Convert library to DAG
+
+#+BEGIN_SRC python :session :results output silent
+
+def libNameToDAG(library_name, depth=2, mod_libs=False, limit=None):
+    theorem_dict = utils.libNameToTheoremDict(library_name, depth=depth, mod_libs=mod_libs, limit=limit)
+    theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
+    library_dag = toplistToDAG(theorem_tree)
+    return library_dag
+
+#+END_SRC
+
+*** Plot graph utils
+
+#+BEGIN_SRC python :session :results output silent
+
+def plotGraph(graph, outfile, label=False, figsize=(4,4)):
+    assert(graph.order() != 0)
+    plt.figure(figsize=figsize)
+    nx.spring_layout(graph, k=5/math.sqrt(graph.order()))
+    nx.draw(graph, with_labels=label, node_size = 50)
+    l,r = plt.xlim()
+    plt.xlim(l-.2,r+.2)
+    plt.savefig(outfile)
+
+def plotUndirected(graph, outfile, label=False, figsize=(4,4)):
+    undir_graph = nx.Graph(graph)
+    plt.figure(figsize=figsize)
+    nx.spring_layout(undir_graph, k=5/math.sqrt(undir_graph.order()))
+    nx.draw(undir_graph, with_labels=label, node_size = 20)
+    l,r = plt.xlim()
+    plt.xlim(l-.2,r+.2)
+    plt.savefig(outfile)
+
+
+def plotGraphs(g1, g2, outfile, label=False, figsize=(4,4)):
+    fig, axs = plt.subplots(1,2,figsize=figsize)
+    nx.spring_layout(g1, k=5/math.sqrt(g1.order()))
+    nx.draw(g1, ax=axs[0], with_labels=label, node_size = 50)
+    nx.spring_layout(g2, k=5/math.sqrt(g2.order()))
+    nx.draw(g2, ax=axs[1], with_labels=label, node_size = 50)
+    range1,range2 = axs[0].get_xlim(), axs[1].get_xlim()
+    axs[0].set_xlim(range1[0]-0.2, range1[1]+0.2)
+    axs[1].set_xlim(range2[0]-0.2, range2[1]+0.2)
+    plt.savefig(outfile)
+
+
+#+END_SRC
+
+*** Plot theorem DAG's
+**** ev_4
+
+#+BEGIN_SRC python :session :results file
+theorem_name = 'ev_4'
+g = nx.DiGraph(toplistToDAG(utils.ev_4_tree))
+plotGraph(g,'./Images/'+theorem_name+'_DAG.png',label=True)
+'./Images/'+theorem_name+'_DAG.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/ev_4_DAG.png]]
+
+**** ev_8
+
+#+BEGIN_SRC python :session :results file
+  theorem_name = 'ev_8'
+  g = nx.DiGraph(toplistToDAG(utils.ev_8_tree))
+  outfile = './Images/'+theorem_name+'_DAG.png'
+  plotGraph(g, outfile, label=True)
+  outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/ev_8_DAG.png]]
+
+**** sqrt2_not_rational
+***** With libraries
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
+#outfile = './Images/'+theorem_name+'_d'+str(depth)+('_mod_DAG.png' if mod_libs else '_DAG.png')
+#tree = utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+#dag = toplistToDAG(tree)
+#plotGraph(nx.DiGraph(dag), outfile, label=True, figsize=(8,8))
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/ev_8_DAG.png]]
+
+***** Without libraries
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, True
+outfile = './Images/'+theorem_name+'_d'+str(depth)+('_mod_DAG.png' if mod_libs else '_DAG.png')
+tree = utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+dag = toplistToDAG(tree)
+plotGraph(nx.DiGraph(dag), outfile, label=True, figsize=(8,8))
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d2_mod_DAG.png]]
+
+**** birthday_paradox
+
+#+BEGIN_SRC python :session :results file
+theorem_name = 'birthday_paradox'
+outfile = './Images/'+theorem_name+'_DAG.png'
+#bday_tree = utils.theoremNameToLists('birthday_paradox', depth=2)
+#bday_dag = toplistToDAG(bday_tree, theorem_name)
+#plotGraph(nx.DiGraph(bday_dag), outfile, label=False, figsize=(8,8))
+'./Images/'+theorem_name+'_DAG.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/birthday_paradox_DAG.png]]
+
+** Generate random DAG's with same degree distribution
+*** Generate random replica DAG's with same arities
+
+#+BEGIN_SRC python :session :results output silent
+
+def getNodeIndegrees(theorem_dag):
+    indegrees = {k:0 for k in theorem_dag}
+    for k in theorem_dag:
+        for v in theorem_dag[k]:
+            if v in indegrees:
+                indegrees[v] += 1
+            else:
+                indegrees[v] = 1
+    return indegrees
+
+def getNodeOutdegrees(dag):
+    return {k:len(v) for k,v in dag.items()}
+
+def flipDictionary(d):
+    unique_vals = set(d.values())
+    return {x:set([k for k in d if d[k]==x]) for x in unique_vals}
+
+def getDegreeDist(dag, in_or_out):
+    node_degrees = getNodeIndegrees(dag) if in_or_out == 'in' else getNodeOutdegrees(dag)
+    degrees_to_nodes = flipDictionary(node_degrees)
+    return {k:len(v) for k,v in degrees_to_nodes.items()}
+
+def getOutdegreeDist(dag):
+    node_outdegrees = {k:len(v) for k,v in dag.items()}
+    outdegrees_to_nodes = flipDictionary(node_outdegrees)
+    return {k:len(v) for k,v in outdegrees_to_nodes.items()}
+
+
+# correct, but increases modularity
+def genComparableGraphConservative(theorem_dag, num_iterations=None):
+    if not num_iterations:
+        num_iterations = 10 * len(theorem_dag)
+    dag = nx.DiGraph(theorem_dag)
+    top_sort = list(nx.topological_sort(dag))
+    node_to_index = {v:i for i,v in enumerate(top_sort)}
+    #print('t',top_sort)
+    count = 0
+    while count < num_iterations:
+        l1 = list(range(len(top_sort)-3))
+        if not l1: continue
+        e1_start = random.choice(l1)
+        #print('l1',l1)
+        l2 = list(range(e1_start+1,len(top_sort)-2))
+        if not l2: continue
+        e2_start = random.choice(l2)
+        #print('l2',l2)
+        l3 = list(filter(lambda x: top_sort[x] in dag[top_sort[e1_start]],
+                         range(e2_start+1, len(top_sort))))
+        if not l3: continue
+        e1_end = random.choice(l3)
+        #print('l3',l3)
+        l4 = list(filter(lambda x: x != e1_end and top_sort[x] in dag[top_sort[e2_start]],
+                                           range(e2_start+1, len(top_sort))))
+        if not l4: continue
+        e2_end = random.choice(l4)
+        #print('l4',l4)
+        dag.remove_edge(top_sort[e1_start], top_sort[e1_end])
+        dag.add_edge(top_sort[e1_start], top_sort[e2_end])
+        dag.remove_edge(top_sort[e2_start], top_sort[e2_end])
+        dag.add_edge(top_sort[e2_start], top_sort[e1_end])
+        count += 1
+    assert(nx.is_directed_acyclic_graph(dag))
+    return dag
+
+# correct, decreases modularity, too slow
+def genComparableGraphBruteForce(theorem_dag, num_iterations=None):
+    if not num_iterations:
+        num_iterations = 10 * len(theorem_dag)
+    dag = nx.DiGraph(theorem_dag)
+    count = 0
+    while count < num_iterations:
+        edges = list(dag.edges())
+        edges_to_flip = [edges[i] for i in random.sample(range(len(edges)),2)]
+        dag.remove_edge(*edges_to_flip[0])
+        dag.remove_edge(*edges_to_flip[1])
+        dag.add_edge(edges_to_flip[0][0], edges_to_flip[1][1])
+        dag.add_edge(edges_to_flip[1][0], edges_to_flip[0][1])
+        if nx.is_directed_acyclic_graph(dag):
+            count += 1
+        else:
+            dag.remove_edge(edges_to_flip[0][0], edges_to_flip[1][1])
+            dag.remove_edge(edges_to_flip[1][0], edges_to_flip[0][1])
+            dag.add_edge(*edges_to_flip[0])
+            dag.add_edge(*edges_to_flip[1])
+    assert(nx.is_directed_acyclic_graph(dag))
+    return dag
+
+
+# doesn't work <-- would need to update ancestors of all descendants
+#def genComparableGraph2(theorem_dag, num_iterations=None):
+#    if not num_iterations:
+#        num_iterations = 10 * len(theorem_dag)
+#    dag = nx.DiGraph(theorem_dag)
+#    flipped_dag = nx.DiGraph.reverse(dag)
+#    ancestors = getDescendants(flipped_dag)
+#    count = 0
+#    while count < num_iterations:
+#        e1,e2 = random.sample(dag.edges(),2)
+#        if (e2[1] not in ancestors[e1[0]].union({e1[0]})) and (e1[1] not in ancestors[e2[0]].union({e2[0]})) \
+#           and (e1[0] != e2[0]) and (e1[1] != e2[1]):
+#            p_dag = copy.deepcopy(dag)
+#            dag.remove_edge(*e1)
+#            dag.remove_edge(*e2)
+#            flipped_dag.remove_edge(*e1[::-1])
+#            flipped_dag.remove_edge(*e2[::-1])
+#            dag.add_edge(e1[0], e2[1])
+#            dag.add_edge(e2[0], e1[1])
+#            flipped_dag.add_edge(e2[1], e1[0])
+#            flipped_dag.add_edge(e1[1], e2[0])
+#            ancestors[e2[1]] = set().union(*[ancestors[p].union({p}) for p in flipped_dag[e2[1]]])
+#            ancestors[e1[1]] = set().union(*[ancestors[p].union({p}) for p in flipped_dag[e1[1]]])
+#            print('eq', ancestors == getDescendants(flipped_dag))
+#            if not (ancestors == getDescendants(flipped_dag)):
+#                print('edges', e1, e2)
+#                print('prev_dag', nx.to_dict_of_lists(p_dag))
+#                print('curr_dag', nx.to_dict_of_lists(dag))
+#                print('calc anc', ancestors)
+#                print('real anc', getDescendants(flipped_dag))
+#            count += 1
+#        if not nx.is_directed_acyclic_graph(dag):
+#            print('hello')
+#    return dag
+
+def getDescendantsLabeled(dag):
+    def getDescendantsLabeledHelper(node, memo):
+        if node in memo:
+            return memo[node]
+        return set(dag[node]).union(*[getDescendantsHelper(child, memo) for child in dag[node]])
+    memo = {}
+    for node in list(nx.topological_sort(nx.DiGraph(dag)))[::-1]:
+        descendants = getDescendantsHelper(node, memo)
+        memo[node] = descendants
+    return memo
+
+def getDescendants(dag):
+    def getDescendantsHelper(node, memo):
+        if node in memo:
+            return memo[node]
+        return set(dag[node]).union(*[getDescendantsHelper(child, memo) for child in dag[node]])
+    memo = {}
+    for node in list(nx.topological_sort(nx.DiGraph(dag)))[::-1]:
+        descendants = getDescendantsHelper(node, memo)
+        memo[node] = descendants
+    return memo
+
+def getDescendantsFromNode(node, dag):
+    return dag[node].union(*[getDescendantsFromNode(ch, dag) for ch in dag[node]])
+
+def getDescendantsFromNodePreserveOrder(node, dag):
+    queue = [node]
+    descendants = []
+    descendants_set = set()
+    while queue:
+        n = queue.pop(0)
+        if n not in descendants_set:
+            descendants.append(n)
+            descendants_set.add(n)
+            queue.extend(list(dag[n]))
+    return descendants
+
+a = {1:{2,3,4},2:{5,6},3:{},4:{7},5:{},6:{},7:{}}
+assert(getDescendants(a) ==
+    {5:set(), 6:set(), 2:{5, 6}, 3:set(), 7:set(), 4:{7}, 1:{2, 3, 4, 5, 6, 7}})
+
+def genComparableGraph(theorem_dag, num_iterations = None):
+    if not num_iterations:
+        num_iterations = 10 * len(theorem_dag)
+    dag = nx.DiGraph(theorem_dag)
+    descendants = getDescendants(dag)
+    flipped_dag = nx.DiGraph.reverse(dag)
+    count = 0
+    while count < num_iterations:
+        old_start,target = random.choice(list(dag.edges()))
+        new_start_options = dag.nodes() - descendants[target].union({old_start, target})
+        new_start_options = set(filter(lambda x: target not in dag[x], new_start_options))
+        if new_start_options: #make sure not
+            dag.remove_edge(old_start, target)
+            flipped_dag.remove_edge(target, old_start)
+            old_start_ancestors = getDescendantsFromNodePreserveOrder(old_start, flipped_dag)
+            for ancestor in old_start_ancestors:
+                descendants[ancestor] = set().union(*[{n}.union(descendants[n]) for n in dag[ancestor]])
+            new_start = random.sample(new_start_options,1)[0]
+            dag.add_edge(new_start, target)
+            flipped_dag.add_edge(target, new_start)
+            new_start_ancestors = getDescendantsFromNodePreserveOrder(new_start, flipped_dag)
+            for ancestor in new_start_ancestors:
+                descendants[ancestor] = set().union(*[{n}.union(descendants[n]) for n in dag[ancestor]])
+            count += 1
+    assert (getDegreeDist(theorem_dag, 'in') == getDegreeDist(dag,'in'))
+    assert(nx.is_directed_acyclic_graph(dag))
+    return nx.to_dict_of_lists(dag)
+
+def genComparableGraphs(theorem_dag, num_graphs, num_iterations=None):
+    return [genComparableGraph(theorem_dag, num_iterations=num_iterations) for _ in range(num_graphs)]
+
+#+END_SRC
+
+*** Plot generated replica DAG's
+**** ev_4
+
+#+BEGIN_SRC python :session :results file
+outfile = './Images/ev_4_gen_DAG.png'
+ev_4_dag = toplistToDAG(utils.ev_4_tree,'ev_4')
+gen_ev_4_dag = genComparableGraph(ev_4_dag, num_iterations=100)
+plotGraphs(nx.DiGraph(ev_4_dag), nx.DiGraph(gen_ev_4_dag), outfile, label=True, figsize=(6,6))
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/ev_4_gen_DAG.png]]
+
+**** ev_8
+
+#+BEGIN_SRC python :session :results file
+outfile = './Images/ev_8_gen_DAG.png'
+ev_8_dag = toplistToDAG(utils.ev_8_tree,'ev_8')
+gen_ev_8_dag = genComparableGraph(ev_8_dag,num_iterations=10)
+plotGraphs(nx.DiGraph(ev_8_dag),
+                     nx.DiGraph(gen_ev_8_dag), outfile, label=True, figsize=(8,8))
+'./Images/ev_8_gen_DAG.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/ev_8_gen_DAG.png]]
+
+**** ev_4_alt
+
+#+BEGIN_SRC python :session :results file
+outfile = './Images/ev_4_alt_gen_DAG.png'
+ev_4_alt_dag = toplistToDAG(utils.ev_4_alt_tree,'ev_4_alt')
+#gen_ev_4_alt_dag = genComparableGraph(ev_4_alt_dag,1000)
+plotGraph(nx.DiGraph(ev_4_alt_dag), outfile, label=True, figsize=(8,8))
+'./Images/ev_4_alt_gen_DAG.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/ev_4_alt_gen_DAG.png]]
+
+**** sqrt2_not_rational
+
+#+BEGIN_SRC python :session :results file
+theorem_name = 'sqrt2_not_rational'
+#outfile = './Images/'+theorem_name+'_gen_DAG.png'
+#tree = utils.theoremNameToLists(theorem_name)
+#dag = toplistToDAG(utils.sqrt2_tree, 'sqrt2_not_rational')
+#gen_dag = genComparableGraph(dag)
+plotGraphs(nx.DiGraph(dag), gen_dag, outfile, label=False, figsize=(8,8))
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/ev_4_alt_gen_DAG.png]]
+
+*** Export multiple replica DAG's
+**** Utils
+
+#+BEGIN_SRC python :session :results output silent
+
+def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, num_iterations, depth=2, mod_libs=False):
+    outfolder = './ProofDAGs/'+theorem_name+'/'
+    if not os.path.exists(outfolder):
+        os.mkdir(outfolder)
+    orig_out = outfolder+'d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
+    with open(orig_out,'w') as f:
+        json.dump({k:list(v) for k,v in theorem_dag.items()}, f)
+    gen_dags = genComparableGraphs(theorem_dag, num_replicas, num_iterations)
+    for i,g in enumerate(gen_dags):
+        replica_out = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
+        with open(replica_out, 'w') as f:
+            json.dump({k:list(v) for k,v in g.items()}, f)
+
+def exportReplicas(theorem_name, depth, num_replicas, num_iterations, mod_libs=False):
+    outfolder = './ProofDAGs/'+theorem_name+'/'
+    theorem_dag = importOrigDAG(theorem_name, depth)
+    gen_dags = genComparableGraphs(theorem_dag, num_replicas, num_iterations)
+    for i,g in enumerate(gen_dags):
+        gen_file = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
+        with open(gen_file, 'w') as f:
+            json.dump({k:list(v) for k,v in g.items()}, f)
+
+def exportDAGs(theorem_name, max_depth, num_replicas, num_iterations, mod_libs=False):
+    print('theorem_name:', theorem_name)
+    for depth in range(1, max_depth+1):
+        tree = utils.theoremNameToLists(theorem_name, depth, mod_libs=mod_libs)
+        dag = toplistToDAG(tree, depth=depth)
+        print("depth ",depth, ":", "size ", len(list(dag.keys())))
+        exportOrigAndReplicas(dag, theorem_name, num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
+
+def exportLibDAG(library_name, max_depth, num_replicas, num_iterations, limit=None, mod_libs=False):
+    for depth in range(1, max_depth+1):
+        dag = libNameToDAG(library_name, depth=depth, mod_libs=mod_libs, limit=limit)
+        exportOrigAndReplicas(dag, library_name, num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
+
+def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
+    if not os.path.exists('./ProofTrees/euclid_book_d'+str(depth)+'.txt'):
+        subprocess.call(['./make_euclid_theorems.sh', str(depth)])
+    with open('./ProofTrees/euclid_book_d'+str(depth)+'.txt','r') as f:
+        theorem_names = list(map(lambda x:"euclid."+x.strip(), f.readlines()))
+    if limit:
+        theorem_names = theorem_names[:limit]
+    theorems = {}
+    return {theorem_name: utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+         for theorem_name in theorem_names}
+
+def getGeoCoqDAG(depth=2, mod_libs=False, limit=None):
+    theorem_dict = getGeoCoqTheorems(depth=depth, mod_libs=mod_libs, limit=limit)
+    theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
+    library_dag = toplistToDAG(theorem_tree)
+    return library_dag
+
+def exportGeoCoqDAG(max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
+    for depth in range(1, max_depth+1):
+        dag = getGeoCoqDAG(depth=depth, mod_libs=mod_libs, limit=limit)
+        exportOrigAndReplicas(dag, 'euclid_book', num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
+
+def geoTreesToDAGs(depth):
+    euclid_theorems = list(filter(lambda x: x[:7] == 'euclid.', os.listdir('./ProofTrees')))
+    trees = map(lambda x: utils.theoremNameToLists(x, depth=depth), euclid_theorems)
+    dags = map(toplistToDAG, trees)
+    for theorem_name, dag in zip(euclid_theorems, dags):
+        outfile = './ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt'
+        if not os.path.exists('./ProofDAGs/'+theorem_name):
+            os.mkdir('./ProofDAGs/'+theorem_name)
+        with open(outfile,'w') as f:
+            json.dump({k:list(v) for k,v in dag.items()}, f)
+
+#+END_SRC
+
+**** Export All
+
+#+BEGIN_SRC python :session :results output silent
+
+theorem_names = [
+  "FTA",
+  "Q_countable",
+  #"pythagoras",
+  "Goedel'sIncompleteness1st",
+  "Quadratic_reciprocity", # really big
+  "Euler_exp_totient",
+  "Euler_Poincare_criterion",
+  "FTC1",
+  "Liouville_theorem",
+  "sum_of_two_squares",
+  "reals_not_countable",
+  "pytha_thm3",
+  "CSB",
+  "Alt_PI_eq",
+  "postulate_of_existence_of_a_triangle_whose_angles_sum_to_two_rights",
+  "is_hexamy",
+  "bertrand_ballot",
+  "Pigeonhole",
+  "four_color",
+  "Taylor",
+  "Cardan_Tartaglia",
+  "binomial",
+  "Cayley_Hamilton",
+  "Wilson",
+  "card_powerset",
+  #"konigsberg_bridges", # <-- really big
+  "herron_qin",
+  "Zis_gcd_bezout",
+  "Ceva",
+  "Strict_Rel_is_Strict_Included",
+  "isosceles_conga",
+  "fun_power_series_conv_IR",
+  "Zgcd_is_gcd",
+  "Lagrange",
+  "Sylow's_theorem", # big
+  "nat_ind",
+  "Law_of_the_Mean",
+  "Cauchy_Schwarz_inequality",
+  "IVT_cor",
+  "divisors_correct",
+  "div3",
+  "Desargues",
+  #"edivpP",
+  "triangle",
+  "birthday_paradox",
+  "inclusion_exclusion",
+  "mul_adj_mx",
+  "Bertrand"
+]
+
+for theorem_name in theorem_names:
+  exportDAGs(theorem_name, max_depth=3, num_replicas=0, num_iterations=10)
+
+
+#max_depths = [4,3,2,2,2,3,3,2,2,1,None, \
+#              None,1, None,None, 2,1,4,1,None,None,None, None,None]
+
+#max_depths = [2 for x in theorem_names]
+#for (theorem_name, max_depth) in zip(theorem_names[9:], max_depths[9:]):
+#  depth = max_depth if max_depth else 1
+#  exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
+
+#exportDAGs("sqrt2_not_rational", max_depth=2, num_replicas=5, num_iterations=10000)
+
+#library_names = ['Arith']
+#for library_name in library_names:
+#  exportLibDAG(library_name, max_depth=1, num_replicas=5, num_iterations=10000)
+
+#exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
+
+#+END_SRC
+
+**** ev_4
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'ev_4'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
+#+END_SRC
+
+**** ev_8
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'ev_8'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
+#+END_SRC
+
+**** ev_8_alt(
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name = 'ev_8_alt'
+exportDAGs(theorem_name, max_depth=3, num_replicas=5, num_iterations=10000)
+#+END_SRC
+
+** DAG analysis
+*** Plotting and Import/Export
+
+#+BEGIN_SRC python :session :results output silent
+
+def plotLineGraph(vals, outfile, figsize=(6,4)):
+    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+    axs.plot(range(len(vals)), vals, 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def modifiedLog(x):
+    return 0 if x == 0 else math.log(x)
+
+def plotLineGraphLogLog(vals, outfile, figsize=(6,4)):
+    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+    axs.plot(list(map(modifiedLog, range(len(vals)))),
+             list(map(modifiedLog, vals)), 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def plotLineGraphs(vals, outfile):
+    figsize = (6,3*len(vals))
+    fig, axs = plt.subplots(len(vals), 1, sharex = True, figsize=figsize)
+    for i in range(len(vals)):
+        ax = axs[i]
+        ax.plot(range(len(vals[i])), vals[i], 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def plotLineGraphsLogLog(vals, outfile):
+    figsize = (6,3*len(vals))
+    fig, axs = plt.subplots(len(vals), 1, sharex = True, figsize=figsize)
+    for i in range(len(vals)):
+        ax = axs[i]
+        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
+                list(map(modifiedLog, vals[i])), 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+
+def importDAG(filename):
+    with open(filename,'r') as f:
+       return {k:set(v) for k,v in json.loads(f.readline()).items()}
+
+def removeGenVars(dag):
+    return {k:{x for x in v if 'gen_var' not in x} for k,v in dag.items() if 'gen_var' not in k}
+
+def importOrigDAG(theorem_name, depth, mod_libs=False):
+    filename = './ProofDAGs/'+theorem_name+'/d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
+    return importDAG(filename)
+
+def stringifyValues(d):
+    return {k:list(map(str, v)) for k,v in d.items()}
+
+def importRandDAGs(theorem_name, depth, mod_libs=False):
+    folder_name = './ProofDAGs/'+theorem_name
+    search_string = 'gen_d'+str(depth)+('_mod_' if mod_libs else '_')
+    filenames = map(lambda y: folder_name +'/'+y,
+                    filter(lambda x: search_string in x,
+                           os.listdir(folder_name)))
+    return list(map(stringifyValues, map(importDAG, filenames)))
+
+def getBinIndex(val,bins):
+    for i in range(len(bins)):
+        if val < bins[i]: return i-1
+    return len(bins) - 1
+
+def plotHist(ax, vals, log=False, num_bins=20):
+    if log:
+        vals = list(filter(lambda x:x>0, vals))
+    bins = np.linspace(min(vals), max(vals), num_bins, endpoint=False)
+    bin_assignments = list(map(lambda x: getBinIndex(x,bins), vals))
+    num_in_bins = [0 for _ in bins]
+    for bin_assignment in bin_assignments:
+        num_in_bins[bin_assignment] += 1
+    if log:
+        ax.bar(np.log10(bins),np.log10(num_in_bins),align='center')
+    else:
+        ax.bar(bins,num_in_bins,align='center',width=(bins[1]-bins[0])/2.0)
+
+def plotDegreeDistsLogLog(vals, outfile):
+    figsize = (6,3*len(vals))
+    fig, axs = plt.subplots(len(vals), 1, sharex = True, figsize=figsize)
+    for i in range(len(vals)):
+        ax = axs[i]
+        norm = float(sum(vals[i]))
+        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
+                list(map(modifiedLog, map(lambda x: x/norm, vals[i]))), 'r+')
+        ax.plot(list(map(modifiedLog, range(len(vals[i])))),
+                list(map(modifiedLog,
+                         map(lambda x: 1.0/((x+1.)*(x+2.)), range(len(vals[i]))))), 'b+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def plotOnTopLogLog(vals, outfile, figsize=(6,4)):
+    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+    axs.plot(list(map(modifiedLog, range(len(vals[0])))),
+             list(map(modifiedLog, vals[0])), 'r+')
+    axs.plot(list(map(modifiedLog, range(len(vals[1])))),
+             list(map(modifiedLog, vals[1])), 'b+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+
+
+#+END_SRC
+
+*** Degree Distributions
+**** Definitions
+
+#+BEGIN_SRC python :session :results output silent
+
+def sparseToDense(d):
+    return [d[x] if x in d else 0 for x in range(max(d)+1)]
+
+def getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=False):
+    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+in_or_out+'degree_dist.png'
+
+def plotOrigDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
+    dag = importOrigDAG(theorem_name, depth, mod_libs=mod_libs)
+    sparse_degree_dist = getDegreeDist(dag, in_or_out)
+    degree_dist = sparseToDense(sparse_degree_dist)
+    plotLineGraphLogLog(degree_dist, getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
+
+def sumDicts(d1, d2):
+    all_keys = set(d1.keys()).union(set(d2.keys()))
+    out = dict()
+    for k in all_keys:
+        if (k in d1) and (k in d2):
+            out[k] = d1[k] + d2[k]
+        elif k in d1:
+            out[k] = d1[k]
+        else:
+            out[k] = d2[k]
+    return out
+
+assert(sumDicts({'fs':1}, {'fdsa':1, 'fs':2}) == {'fdsa':1, 'fs':3})
+
+def averageDicts(dicts):
+    sum_dicts = functools.reduce(sumDicts, dicts, {})
+    return {k:v/len(dicts) for k,v in sum_dicts.items()}
+
+def getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=False):
+    return './Images/gen_'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+in_or_out+'degree_dist.png'
+
+def plotRandDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
+    dags = importRandDAGs(theorem_name, depth)
+    degree_dists = list(map(lambda x: getDegreeDist(x, in_or_out), dags))
+    sparse_degree_dist_ave = averageDicts(degree_dists)
+    plotLineGraphLogLog(sparseToDense(sparse_degree_dist_ave),
+                        getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
+
+def estimateBeta(values):
+    exp_val_log = sum(map(lambda r: r*math.log(r), values))
+    return fsolve(lambda beta: - exp_val_log - digamma(len(values)*beta+1) + digamma(beta+1), 0.5)
+
+def getEntropy(values):
+    return -sum(map(lambda r: r*math.log(r), values))
+
+#+END_SRC
+
+**** Examples
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, in_or_out, mod_libs = 'sqrt2_not_rational', 3, 'in', False
+plotOrigDegreeDist(theorem_name, depth, in_or_out, mod_libs=mod_libs)
+getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d3_indegree_dist.png]]
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, in_or_out, mod_libs = 'sqrt2_not_rational', 3, 'in', False
+plotRandDegreeDist(theorem_name, depth, in_or_out, mod_libs=mod_libs)
+getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_sqrt2_not_rational_d3_indegree_dist.png]]
+
+*** Pagerank
+**** Utils
+#+BEGIN_SRC python :session :results output silent
+
+def getPageRank(dag):
+    return nx.algorithms.link_analysis.pagerank(nx.Graph(dag))
+
+def getAveragePageRank(dags):
+    return averageDicts(list(map(getPageRank, dags)))
+
+def getSortedRankings(rankings):
+    return sorted(rankings.values(), key=lambda x: -x)
+
+def pageRankOrigFileName(theorem_name, depth, mod_libs=False):
+    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'page_rank.png'
+
+def pageRankRandFileName(theorem_name, depth, mod_libs=False):
+    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'gen_page_rank.png'
+
+def plotOrigPageRank(theorem_name, depth, mod_libs=False):
+    dag = importOrigDAG(theorem_name, depth, mod_libs=mod_libs)
+    rank = getSortedRankings(getPageRank(dag))
+    #print("Beta: ", estimateBeta(rank))
+    plotLineGraphLogLog(rank, pageRankOrigFileName(theorem_name, depth, mod_libs=mod_libs))
+
+def plotRandPageRank(theorem_name, depth, mod_libs=False):
+    dags = importRandDAGs(theorem_name, depth, mod_libs=mod_libs)
+    rank = getSortedRankings(getAveragePageRank(dags))
+    #print("Beta: ", estimateBeta(rank))
+    plotLineGraphLogLog(rank, pageRankRandFileName(theorem_name, depth, mod_libs=mod_libs))
+
+def average(lst):
+    return sum(lst)/len(lst)
+
+#+END_SRC
+
+**** Examples
+***** sqrt2_not_rational
+****** Original
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth = 'sqrt2_not_rational', 3
+plotOrigPageRank(theorem_name, depth)
+pageRankOrigFileName(theorem_name, depth)
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d3_page_rank.png]]
+
+****** Null model
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth = 'sqrt2_not_rational', 3
+plotRandPageRank(theorem_name, depth)
+pageRankRandFileName(theorem_name, depth)
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d3_gen_page_rank.png]]
+
+*** Modularity
+
+#+BEGIN_SRC python :session :results output silent
+
+def getModularity(dag):
+    graph = nx.Graph(dag)
+    partition = cylouvain.best_partition(graph)
+    modularity = cylouvain.modularity(partition, graph)
+    return modularity
+
+def getModularitiesFileName(theorem_name, depth, mod_libs=False):
+    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'modularities.png'
+
+def plotOrigVRandModularity(theorem_name, depth, outfile, mod_libs=False):
+    orig_modularity = getModularity(importOrigDAG(theorem_name, depth, mod_libs=mod_libs))
+    #print("orig modularity: ", orig_modularity)
+    rand_modularities = list(map(getModularity, importRandDAGs(theorem_name, depth, mod_libs=mod_libs)))
+    plotLineGraph([orig_modularity]+rand_modularities, outfile)
+
+#+END_SRC
+
+***** sqrt2_not_rational
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
+outfile = getModularitiesFileName(theorem_name, depth, mod_libs=mod_libs)
+plotOrigVRandModularity(theorem_name, depth, outfile, mod_libs=mod_libs)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d2_modularities.png]]
+
+***** Elements
+
+#+BEGIN_SRC python :session :results file
+theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
+outfile = getModularitiesFileName(theorem_name, depth, mod_libs=mod_libs)
+
+tree = json.loads(open('/home/scottviteri/Downloads/elements.txt','r').read())
+dag = {x[0]:set(x[1]) for x in tree}
+rand_dags = genComparableGraphs(dag, 5, num_iterations = 1000)
+
+orig_modularity = getModularity(dag)
+rand_modularities = list(map(getModularity, rand_dags))
+plotLineGraph([orig_modularity]+rand_modularities, outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/sqrt2_not_rational_d2_modularities.png]]
+
+*** Entropy
+
+#+BEGIN_SRC python :session :results output silent
+
+def flipDAG(dag):
+    g = nx.DiGraph(dag)
+    rev_g = nx.DiGraph.reverse(g)
+    return {k:set(v) for k,v in nx.to_dict_of_lists(rev_g).items()}
+
+def normalize(lst):
+    return [x/sum(lst) for x in lst]
+
+def normalizeDict(d):
+    return {k:v/sum(d.values()) for k,v in d.items()}
+
+def count(lst):
+    return {k:lst.count(k) for k in lst}
+
+def getEntropy(lst):
+    return -sum(map(lambda x: x*math.log(x,2), lst))
+
+def getClusterDist(descendants, partitions):
+    desc_partition_list = list(map(lambda x: partitions[x], descendants))
+    cluster_distribution = count(desc_partition_list)
+    return normalizeDict(cluster_distribution)
+
+def getFoci(dag):
+    descendants = getDescendants(dag)
+    ancestors = getDescendants(flipDAG(dag))
+    partitions = cylouvain.best_partition(nx.Graph(dag))
+    desc_entropies = {k: getEntropy(getClusterDist(ancestors[k], partitions).values()) for k in dag}
+    anc_entropies = {k: getEntropy(getClusterDist(descendants[k], partitions).values()) for k in dag}
+    return {k:desc_entropies[k] - anc_entropies[k] for k in dag}
+
+def findAllWithoutParents(dag):
+    all_vals = set().union(*dag.values())
+    return [x for x in dag if x not in all_vals]
+
+def getMinDepths(orig_dag):
+    dag = flipDAG(orig_dag)
+    d = {}
+    #top_sort = list(nx.topological_sort(nx.DiGraph(dag)))
+    roots = findAllWithoutParents(dag)
+    depth_count = 0
+    queue = [roots]
+    while queue:
+       current_layer = queue.pop(0)
+       for x in current_layer:
+           d[x] = depth_count
+       next_layer = list(set().union(*map(lambda x: dag[x], current_layer)) - set(d.keys()))
+       if next_layer:
+           queue.append(next_layer)
+       depth_count += 1
+    return d
+
+def getMaxDepths(dag):
+    def getMaxDepthHelper(node, memo):
+        if node in memo:
+            return memo[node]
+        if not dag[node]:
+            return 0
+        return max([getMaxDepthHelper(child, memo) for child in dag[node]]) + 1
+    memo = {}
+    for node in list(nx.topological_sort(nx.DiGraph(dag)))[::-1]:
+        depth = getMaxDepthHelper(node, memo)
+        if (node in memo and depth > memo[node]) or (node not in memo):
+            memo[node] = depth
+    return memo
+
+
+def plotScatterPlot(xs, ys, outfile, figsize=(6,4)):
+    fig, axs = plt.subplots(1, 1, sharex = True, figsize=figsize)
+    axs.plot(xs, ys, 'r+')
+    fig.tight_layout()
+    plt.savefig(outfile)
+
+def removeGenVars(dag):
+    return {k:{x for x in v if 'gen_var' not in x} for k,v in dag.items() if 'gen_var' not in k}
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+sqrt2_dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+node = random.sample(sqrt2_dag.keys(), 1)[0]
+print(node, getFoci(sqrt2_dag)[node])
+#+END_SRC
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/focus_depth.png'
+dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+nodes = list(dag.keys())
+foci = getFoci(dag)
+depths = getMaxDepths(dag)
+plotScatterPlot([depths[n] for n in nodes], [foci[n] for n in nodes], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/focus_depth.png]]
+
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/copy_focus_depth.png'
+dag = genComparableGraph(importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt'),1000)
+nodes = list(dag.keys())
+foci = getFoci(dag)
+depths = getMaxDepths(dag)
+plotScatterPlot([depths[n] for n in nodes], [foci[n] for n in nodes], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/copy_focus_depth.png]]
+
+** DAG generative model
+*** Create DAG
+
+#+BEGIN_SRC python :session :results output silent
+
+def createGraph(m, p, q, num_iterations):
+    d = {}
+    descendant_dict = {}
+    for i in range(num_iterations):
+        new = 'v'+str(i)
+        if m >= len(d):
+            potential_targets = list(d.keys())
+        else:
+            potential_targets = random.sample(list(d.keys()), m)
+        d[new] = []
+        descendant_dict[new] = set()
+        for target in potential_targets:
+            if random.random() < p:
+                d[new].append(target)
+                descendant_dict[new] = descendant_dict[new].union({target}, descendant_dict[target])
+            if random.random() < q:
+                for descendant in descendant_dict[target]:
+                    d[new].append(descendant)
+                    descendant_dict[new] = descendant_dict[new].union({descendant}, descendant_dict[descendant])
+    #print(nx.algorithms.dag.is_directed_acyclic_graph(nx.DiGraph(d)))
+    #print(descendant_dict)
+    return d
+
+def plotDegreeDist(graph, in_or_out, outfile):
+   dist = getDegreeDist(graph, in_or_out)
+   plotLineGraph(sparseToDense(dist), outfile)
+
+def plotDegreeDistLogLog(graph, in_or_out, outfile):
+   dist = getDegreeDist(graph, in_or_out)
+   plotLineGraphLogLog(sparseToDense(dist), outfile)
+
+def exportGenGraph(graph):
+    outfile = './ProofDAGs/gen_graph.txt'
+    with open(outfile, 'w') as f:
+        json.dump({k:list(v) for k,v in graph.items()}, f)
+
+def exportGenGraphModular(graph):
+    outfile = './ProofDAGs/gen_graph_modular.txt'
+    with open(outfile, 'w') as f:
+        json.dump({k:list(v) for k,v in graph.items()}, f)
+
+
+#+END_SRC
+
+*** Create modular generated DAG
+
+#+BEGIN_SRC python :session :results output silent
+
+# do algorithm as originally intended
+def createGraphHighMod(m, p, q, num_iterations, connectivity=1.0):
+    d = nx.DiGraph({'v0':set()})
+    descendants_dict = {'v0':set()}
+    last_target = 'v0'
+    for i in range(1,num_iterations+1):
+        new = 'v'+str(i)
+        d.add_node(new)
+        descendants_dict[new] = set()
+        for j in range(m):
+            distances = {k:v for k,v in nx.shortest_path_length(d,target=last_target).items() if k != new}
+            all_nodes = list(d.nodes() - {new})
+            connected_nodes = list(distances.keys())
+            probs = normalizeDict({node:(1.0/float(distances[node]+1)+connectivity if node in connected_nodes else connectivity) for node in all_nodes})
+            prob_list = [probs[x] for x in probs]
+            target = np.random.choice(all_nodes, 1, p=prob_list)[0]
+            if random.random() < p:
+                d.add_edge(new, target)
+                descendants_dict[new] = descendants_dict[new].union({target}, descendants_dict[target])
+                last_target = target
+            if random.random() < q:
+                for descendant in descendants_dict[target]:
+                    d.add_edge(new, descendant)
+                    descendants_dict[new] = descendants_dict[new].union({descendant}, descendants_dict[descendant])
+    assert(nx.algorithms.dag.is_directed_acyclic_graph(d))
+    return nx.to_dict_of_lists(d)
+
+
+#+END_SRC
+
+*** Example gen graph plots
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/genGraph.png'
+graph = createGraph(4,.56,.25,100)
+print(getModularity(graph))
+plotGraph(nx.DiGraph(graph), outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/genGraph.png]]
+
+#+BEGIN_SRC python :session :results output silent
+graph = createGraph(4,.56,.25,2000)
+exportGenGraph(graph)
+#+END_SRC
+
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/genGraphModular.png'
+graph = createGraphHighMod(4,.3,.25,300,connectivity=5)
+print(getModularity(graph))
+plotGraph(nx.DiGraph(graph), outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/genGraphModular.png]]
+
+#+BEGIN_SRC python :session :results output silent
+graph = createGraphHighMod(4,.3,.25,2000)
+exportGenGraphModular(graph)
+#+END_SRC
+
+*** Plot Degree Distribution
+
+**** Normal gen graph
+
+#+BEGIN_SRC python :session :results file
+outfile, in_or_out = 'genGraph_degree_dist.png', 'in'
+#graph = createGraph(4,.3,.25,2000)
+graph = importDAG('./ProofDAGs/gen_graph.txt')
+print(getModularity(graph))
+plotDegreeDistLogLog(graph, in_or_out, outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:genGraph_degree_dist.png]]
+
+**** Modular gen graph
+
+#+BEGIN_SRC python :session :results file
+outfile, in_or_out = 'genGraph_degree_dist_mod.png', 'in'
+graph = createGraphHighMod(4,.56,.25,2000)
+#graph = importDAG('./ProofDAGs/gen_graph_modular.txt')
+plotDegreeDistLogLog(graph, in_or_out, outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:genGraph_degree_dist_mod.png]]
+
+**** Gen graph alphas plot
+
+#+BEGIN_SRC python :session :results file
+outfile = './Images/gen_graph_alpha_p_mq.png'
+
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+#ax.view_init(elev=30.,azim=90)
+
+def f(p,m):
+    q = 1.0/m
+    graph = createGraph(m,p,q,500)
+    degree_dist = list(getDegreeDist(graph, 'in').values())
+    alpha = powerlaw.Fit(degree_dist).power_law.alpha
+    return alpha
+
+# Make data.
+Ps = np.arange(0.05, 1.0, 0.1) # p
+Ms = np.arange(1, 10, 1) # m
+Xmesh, Ymesh = np.meshgrid(Ps, Ms)
+Z = np.array([[f(p,m) for p in Ps] for m in Ms])
+
+# Plot the surface.
+surf = ax.plot_surface(Xmesh, Ymesh, Z, cmap=cm.coolwarm,
+                       linewidth=0, antialiased=False)
+
+# Customize the z axis.
+#ax.set_zlim(-1.01, 1.01)
+ax.zaxis.set_major_locator(LinearLocator(10))
+ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+# Add a color bar which maps values to colors.
+fig.colorbar(surf, shrink=0.5, aspect=5)
+
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_graph_alpha_p_mq.png]]
+
+*** Plot PageRank
+
+**** Plot distibution
+
+#+BEGIN_SRC python :session :results file
+outfile = './Images/gen_graph_pagerank.png'
+#graph = importDAG('./ProofDAGs/gen_graph.txt')
+#p_out = sorted(getPageRank(graph).values())[::-1]
+#plotLineGraphLogLog(p_out, outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_graph_pagerank.png]]
+
+**** Plot beta values
+
+#+BEGIN_SRC python :session :results file
+#betas = []
+#for p in map(lambda x:x/50.0, range(1,50)):
+#    graph = createGraph(4,p,1.0/4.0,1000)
+#    p_out = sorted(getPageRank(graph).values())[::-1]
+#    betas.append(estimateBeta(p_out)[0])
+#
+#plotLineGraph(betas, './Images/gen_graph_beta_v_p.png')
+'./Images/gen_graph_beta_v_p.png'
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_graph_beta_v_p.png]]
+
+**** Plot surface of beta values
+
+#+BEGIN_SRC python :session :results file
+outfile = './Images/gen_graph_beta_p_mq.png'
+
+fig = plt.figure()
+ax = fig.gca(projection='3d')
+#ax.view_init(elev=30.,azim=90)
+
+def f(p,m):
+    q = 1.0/m
+    graph = createGraph(m,p,q,500)
+    p_out = sorted(getPageRank(graph).values())[::-1]
+    beta = estimateBeta(p_out)
+    return beta[0]
+
+# Make data.
+X = np.arange(0.05, 1.0, 0.1) #p
+Y = np.arange(1, 10, 1) #M (from 1 to 10)
+Xmesh, Ymesh = np.meshgrid(X, Y)
+Z = np.array([[f(x,y) for x in X] for y in Y])
+
+# Plot the surface.
+surf = ax.plot_surface(Xmesh, Ymesh, Z, cmap=cm.coolwarm,
+                       linewidth=0, antialiased=False)
+
+# Customize the z axis.
+#ax.set_zlim(-1.01, 1.01)
+ax.zaxis.set_major_locator(LinearLocator(10))
+ax.zaxis.set_major_formatter(FormatStrFormatter('%.02f'))
+
+# Add a color bar which maps values to colors.
+fig.colorbar(surf, shrink=0.5, aspect=5)
+
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:./Images/gen_graph_beta_p_mq.png]]
+
+*** Plot and Compare Max Depths
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/compare_depth_dists.png'
+
+#dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+#gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
+#permute_dag = genComparableGraph(dag,1000)
+#print(list(map(getModularity, [dag, gen_dag, permute_dag])))
+#
+#dag_depths = sorted(getMaxDepths(dag).values())[::-1]
+#gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
+#permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
+
+plt.figure()
+fig, axs = plt.subplots(3,1,sharex=True,figsize=(6,12))
+plotHist(axs[0], dag_depths)
+plotHist(axs[1], gen_dag_depths)
+plotHist(axs[2], permute_dag_depths)
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/compare_depth_dists.png]]
+
+*** Analyze modular generated DAGs
+
+**** Compare modularity value
+
+#+BEGIN_SRC python :session :results output silent
+sqrt2_dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+graphs = [createGraphHighMod(4,.56,1.0/4.0, len(sqrt2_dag)) for _ in range(10)]
+print(getModularity(sqrt2_dag))
+print(list(map(getModularity, graphs)))
+#+END_SRC
+
+**** Overlay degree distributions
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/sqrt2_compare_gen.png'
+
+#g1 = importDAG('./ProofDAGs/sqrt2_not_rational/d3.txt')
+#g2 = createGraphHighMod(4,.56,1.0/4.0, len(g1))
+#d1 = sparseToDense(getDegreeDist(g1,'in'))
+#d2 = sparseToDense(getDegreeDist(g2,'in'))
+
+plotOnTopLogLog([d1,d2], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/sqrt2_compare_gen.png]]
+
+*** Compare max depth histograms
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/compare_hist.png'
+
+#dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+#gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
+#gen_dag_high_mod = createGraphHighMod(4,.56,1.0/4.0,len(dag))
+#permute_dag = genComparableGraph(dag,500)
+#print(list(map(getModularity, [dag, gen_dag, gen_dag_high_mod, permute_dag])))
+#
+#dag_depths = sorted(getMaxDepths(dag).values())[::-1]
+#gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
+#gen_dag_high_mod_depths = sorted(getMaxDepths(gen_dag_high_mod).values())[::-1]
+#permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
+
+plt.figure()
+fig, axs = plt.subplots(4,1,sharex=True,figsize=(6,12))
+plotHist(axs[0], dag_depths)
+plotHist(axs[1], gen_dag_depths)
+plotHist(axs[2], gen_dag_high_mod_depths)
+plotHist(axs[3], permute_dag_depths)
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/compare_hist.png]]
+
+** Compare Euclid graphs
+*** Overlay generated and original degree distributions
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/Euclid_compare_gen.png'
+
+#g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+#exportGenGraph(createGraph(4,.56,1.0/4.0,int(len(g1)/10)))
+#
+#g2 = importDAG('./ProofDAGs/gen_graph.txt')
+#d1 = sparseToDense(getDegreeDist(g1,'in'))
+#d2 = sparseToDense(getDegreeDist(g2,'in'))
+
+plotOnTopLogLog([d1,d2], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/Euclid_compare_gen.png]]
+
+*** Compare orig, permuted, generated, and book version degrees
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/Euclid_compare_indegrees.png'
+
+exportGenGraph(createGraph(3,.265,1.0/3.0,50000))
+
+#g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+#g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
+g2 = importDAG('./ProofDAGs/gen_graph.txt')
+#g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
+
+#d1 = sparseToDense(getDegreeDist(g1,'in'))
+#d_rand = sparseToDense(getDegreeDist(g_rand,'in'))
+d2 = sparseToDense(getDegreeDist(g2,'in'))
+#d3 = sparseToDense(getDegreeDist(g3,'in'))
+plotDegreeDistsLogLog([d1,d_rand,d2,d3], outfile)
+#plotLineGraphsLogLog([d1,d_rand,d2,d3], outfile)
+outfile
+#+END_SRC
+
+*** Compare orig, permuted, generated, and book version pageranks
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/Euclid_compare_pagerank.png'
+
+g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
+g2 = importDAG('./ProofDAGs/gen_graph.txt')
+g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
+
+p1 = sorted(getPageRank(g1).values())[::-1]
+p_rand = sorted(getPageRank(g_rand).values())[::-1]
+p2 = sorted(getPageRank(g2).values())[::-1]
+p3 = sorted(getPageRank(g3).values())[::-1]
+print("Betas:", list(map(estimateBeta,[p1,p_rand,p2,p3])))
+plotLineGraphsLogLog([p1,p_rand,p2,p3], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/Euclid_compare_pagerank.png]]
+
+*** Compare modularities
+
+#+BEGIN_SRC python :session :results output silent
+outfile = 'Images/Euclid_compare_modularity.png'
+
+#g1 = importDAG('./ProofDAGs/euclid_book/d1.txt')
+#g_rand = importDAG('./ProofDAGs/euclid_book/gen_d1_0.txt')
+#g2 = importDAG('./ProofDAGs/gen_graph.txt')
+#g3 = importDAG('./ProofDAGs/euclid_book/euclid_dependencies.txt')
+
+# too big
+m1 = getModularity(g1)
+#m_rand = getModularity(g_rand)
+#m2 = getModularity(g2)
+#m3 = getModularity(g3)
+
+#print(m1, m_rand, m2, m3)
+#+END_SRC
+
+*** All Statistics
+
+#+BEGIN_SRC python :session :results output silent
+
+
+  def getProofStatistics(theorem_name, depth):
+      theorem_dag = importDAG('./ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt')
+      num_nodes = len(theorem_dag)
+      print('num_nodes:', num_nodes)
+      modularity = getModularity(theorem_dag)
+      comparable_graphs = [genComparableGraph(theorem_dag, len(theorem_dag)) for _ in range(10)]
+      shuffle_modularities = list(map(getModularity, comparable_graphs))
+      nulls = [createGraph(4,.56,.25,num_nodes) for _ in range(10)]
+      null_modularities = list(map(getModularity, nulls))
+      return {'theorem_name':theorem_name,'depth':depth,
+           'num_nodes':num_nodes,'modularity':modularity,
+           'shuffle_modularities':shuffle_modularities,
+           'null_modularities': null_modularities}
+
+  def exportStatistics(stats):
+      outfolder = './ProofStatistics/'+stats['theorem_name']+'/'
+      if not os.path.exists(outfolder):
+          os.mkdir(outfolder)
+      with open(outfolder+'d'+str(stats['depth'])+'.txt','w') as f:
+          json.dump(stats, f)
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name, depth = 'sqrt2_not_rational', 1
+print(getProofStatistics(theorem_name, depth))
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+theorem_name, depth = 'sqrt2_not_rational', 1
+exportStatistics(getProofStatistics(theorem_name, depth))
+#+END_SRC
+
+#+BEGIN_SRC python :session :results output silent
+depth = 1
+for theorem_name in theorem_names[22:]:
+    print('theorem_name:',theorem_name)
+    exportStatistics(getProofStatistics(theorem_name, depth))
+#+END_SRC
+
+*** Betweenness Centrality
+
+#+BEGIN_SRC python :session :results file
+outfile = 'Images/centrality.png'
+
+#g1 = sqrt2_dag
+#g2 = createGraph(4,.56,1.0/5.0,4154)
+#
+#graph1 = nx.DiGraph(g1)
+#centrality_dist1 = normalize(sorted(nx.betweenness_centrality(graph1).values())[::-1])
+#graph2 = nx.DiGraph(g2)
+#centrality_dist2 = normalize(sorted(nx.betweenness_centrality(graph2).values())[::-1])
+
+#plotLineGraphs([centrality_dist1,centrality_dist2], outfile)
+#plotLineGraphsLogLog([centrality_dist1,centrality_dist2], outfile)
+
+plt.figure()
+fig, axs = plt.subplots(4,1,sharex=False,figsize=(6,12))
+plotHist(axs[0], centrality_dist1, log=False)
+plotHist(axs[1], centrality_dist1, log=True)
+plotHist(axs[2], centrality_dist2, log=False)
+plotHist(axs[3], centrality_dist2, log=True)
+plt.savefig(outfile)
+
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:Images/centrality.png]]
+
+*** Degree stuff
+
+#+BEGIN_SRC python :session :results output silent
+
+def topSort(graph):
+    flipped_graph = flipDAG(graph)
+    orphans = [x for x in graph if not flipped_graph[x]]
+    roots = random.sample(orphans, len(orphans))
+    top_sort = []
+    top_sort_set = set()
+    queue = roots.copy()
+    while queue:
+        n = queue.pop(0)
+        if n not in top_sort_set:
+            top_sort.append(n)
+            top_sort_set.add(n)
+            children = graph[n]
+            queue.extend(random.sample(children, len(children)))
+    return top_sort
+
+
+#+END_SRC
+
+#+BEGIN_SRC python :session :results file
+outfile, in_or_out = 'alt_pi_outdegree.png', 'in'
+
+#graph_1 = nx.DiGraph(importDAG('./ProofDAGs/Alt_PI_eq/d1.txt'))
+#top_sort_1 = list(topSort(nx.to_dict_of_lists(graph_1)))
+#num_edges_1 = [graph_1.subgraph(top_sort_1[:i]).number_of_edges() for i in range(0, len(top_sort_1),10)]
+
+#tree = json.loads(open('/home/scottviteri/Downloads/elements.txt','r').read())
+#graph_2 = nx.DiGraph({x[0]:set(x[1]) for x in tree})
+#top_sort_2 = list(topSort(nx.to_dict_of_lists(graph_2)))
+#num_edges_2 = [graph_2.subgraph(top_sort_2[:i]).number_of_edges() for i in range(len(top_sort_2))]
+
+plotLineGraphs([num_edges_1, num_edges_2], outfile)
+outfile
+#+END_SRC
+
+#+RESULTS:
+[[file:alt_pi_outdegree.png]]

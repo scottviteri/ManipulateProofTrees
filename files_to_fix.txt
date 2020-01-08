@@ -1,0 +1,7 @@
+EulerFormula
+
+mathcomp.solvable
+
+Reciprocity
+
+ProjectiveGeometry.Plane

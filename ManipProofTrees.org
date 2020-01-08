@@ -609,7 +609,7 @@ def geoTreesToDAGs(depth):
 theorem_names = [
   "FTA",
   "Q_countable",
-  "pythagoras",
+  #"pythagoras",
   "Goedel'sIncompleteness1st",
   "Quadratic_reciprocity", # really big
   "Euler_exp_totient",
@@ -656,6 +656,10 @@ theorem_names = [
   "mul_adj_mx",
   "Bertrand"
 ]
+
+for theorem_name in theorem_names:
+  exportDAGs(theorem_name, max_depth=3, num_replicas=0, num_iterations=10)
+
 
 #max_depths = [4,3,2,2,2,3,3,2,2,1,None, \
 #              None,1, None,None, 2,1,4,1,None,None,None, None,None]
