@@ -661,8 +661,8 @@ theorem_names = [
 ]
 
 
-#for theorem_name in theorem_names:
-#  exportDAGs(theorem_name, max_depth=4, num_replicas=0, num_iterations=10)
+for theorem_name in theorem_names:
+  exportDAGs(theorem_name, max_depth=4, num_replicas=0, num_iterations=10)
 
 
 #max_depths = [4,3,2,2,2,3,3,2,2,1,None, \
