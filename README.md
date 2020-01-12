@@ -10,6 +10,10 @@ If you do not have this, clone from https://github.com/coq/coq.git.
 
 Tested with coq-8.8.
 
+## ./ManipProofTrees.org
+
+Compress and analyze proof objects as a deduplified directed acyclic graph.
+
 ## ./ProofSourceFiles
 
 A collection of sample Coq proofs.
@@ -17,20 +21,24 @@ A collection of sample Coq proofs.
 ## ./ProofTrees
 
 Exported collection of reified proof trees from ./ProofSourceFiles.
-Export is handled by ./coq_proof_to_trees.sh, which depends on my local version of the git repo uwplse/CoqAST.
-Theorems are exported too a variety of depths, each with a variation on whether coq library names are expanded.
+Export is handled by ./coq_proof_to_trees.sh, which depends my CoqAST fork.
+Theorems are exported to a variety of depths, each with a variation on whether coq library names are expanded.
+
+## ./ProofDAGs
+
+Output of ManipProofTrees, run on trees from ./ProofTrees.
 
 ## ./Images
 
 The saved image outputs of computation in ManipProofTrees.org
 
-## ./ManipProofTrees.org
+## ./utils.py
 
-Compress and analyze proof objects as a deduplified directed acyclic graph.
+A collection of python functions used by both ManipProofTrees.org and ./GenerateDependencyGraph.org
 
-## ./ProofDAGs
+## ./coq_proof_to_trees.sh
 
-Output of ManipProofTrees
+Takes a theorem name as an argument. This theorem is pulled from ProofSourceFiles, and concatenated onto ./ProofSourceFiles/ExportProof.v. The output of coqc onto ./ProofSourceFiles/ExportProof.v is dumped to the ./ProofTrees/ directory.
 
 ## ./GenerateDependencyGraphs.org
 
@@ -42,14 +50,6 @@ Also can generate graphs of what theorems reference what other theorems in the C
 
 Output of GenerateDependencyGraphs.org
 
-## ./utils.py
-
-A collection of python functions used by both ManipProofTrees.org and ./GenerateDependencyGraph.org
-
 ## ./clean.sh
 
 Wipe all saved results from ManipProofTrees.org.
-
-## ./coq_proof_to_trees.sh
-
-Takes a theorem name as an argument. This theorem is pulled from ProofSourceFiles, and concatenated onto ./ProofSourceFiles/ExportProof.v. The output of coqc onto ./ProofSourceFiles/ExportProof.v is dumped to the ./ProofTrees/ directory.
