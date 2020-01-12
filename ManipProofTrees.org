@@ -153,8 +153,8 @@ assert(toplistToDAG(utils.ev_4_tree)
 
 #+BEGIN_SRC python :session :results output silent
 
-def libNameToDAG(library_name, depth=2, mod_libs=False, limit=None):
-    theorem_dict = utils.libNameToTheoremDict(library_name, depth=depth, mod_libs=mod_libs, limit=limit)
+def libNameToDAG(library_name, depth=2, limit=None):
+    theorem_dict = utils.libNameToTheoremDict(library_name, depth=depth, limit=limit)
     theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
     library_dag = toplistToDAG(theorem_tree)
     return library_dag
@@ -173,27 +173,6 @@ def plotGraph(graph, outfile, label=False, figsize=(4,4)):
     l,r = plt.xlim()
     plt.xlim(l-.2,r+.2)
     plt.savefig(outfile)
-
-#import colorsys
-#
-#def whichConstructor(node):
-#    for const in cic_constructors:
-#        if const in node:
-#            return const
-#    return ''
-#
-#def plotGraph(graph, outfile, figsize):
-#    assert(graph.order() != 0)
-#    plt.figure(figsize=figsize)
-#    nx.spring_layout(graph, k=1000/math.sqrt(graph.order()))
-#    labels = {k:('' if '22' in k else (whichConstructor(k) if isConstructor(k) else k)) for k in g}
-#    constr_colors = [(i+1)*(1.0/(len(cic_constructors)+1)) for i in range(1,len(cic_constructors)+1)]
-#    nodes = list(graph.nodes())
-#    colors = [colorsys.hsv_to_rgb(constr_colors[(['']+cic_constructors).index(whichConstructor(node))],.7,.7) for node in nodes]
-#    nx.draw(graph, labels=labels, node_color=colors,node_size = 350)
-#    plt.legend()
-#    plt.savefig(outfile)
-
 
 def plotUndirected(graph, outfile, label=False, figsize=(4,4)):
     undir_graph = nx.Graph(graph)
@@ -249,9 +228,9 @@ plotGraph(g,'./Images/'+theorem_name+'_DAG.png',label=True)
 ***** With libraries
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
-#outfile = './Images/'+theorem_name+'_d'+str(depth)+('_mod_DAG.png' if mod_libs else '_DAG.png')
-#tree = utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+theorem_name, depth = 'sqrt2_not_rational', 2
+#outfile = './Images/'+theorem_name+'_d'+str(depth)+'_DAG.png'
+#tree = utils.theoremNameToLists(theorem_name, depth=depth)
 #dag = toplistToDAG(tree)
 #plotGraph(nx.DiGraph(dag), outfile, label=True, figsize=(8,8))
 outfile
@@ -263,9 +242,9 @@ outfile
 ***** Without libraries
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, True
-outfile = './Images/'+theorem_name+'_d'+str(depth)+('_mod_DAG.png' if mod_libs else '_DAG.png')
-tree = utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+theorem_name, depth= 'sqrt2_not_rational', 2
+outfile = './Images/'+theorem_name+'_d'+str(depth)+'_DAG.png
+tree = utils.theoremNameToLists(theorem_name, depth=depth)
 dag = toplistToDAG(tree)
 plotGraph(nx.DiGraph(dag), outfile, label=True, figsize=(8,8))
 outfile
@@ -553,45 +532,45 @@ outfile
 
 #+BEGIN_SRC python :session :results output silent
 
-def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, num_iterations, depth=2, mod_libs=False):
+def exportOrigAndReplicas(theorem_dag, theorem_name, num_replicas, num_iterations, depth=2):
     outfolder = './ProofDAGs/'+theorem_name+'/'
     if not os.path.exists(outfolder):
         os.mkdir(outfolder)
-    orig_out = outfolder+'d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
+    orig_out = outfolder+'d'+str(depth)+'.txt.'
     with open(orig_out,'w') as f:
         json.dump({k:list(v) for k,v in theorem_dag.items()}, f)
     gen_dags = genComparableGraphs(theorem_dag, num_replicas, num_iterations)
     for i,g in enumerate(gen_dags):
-        replica_out = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
+        replica_out = outfolder+'gen_d'+str(depth)+'_'+str(i)+'.txt'
         with open(replica_out, 'w') as f:
             json.dump({k:list(v) for k,v in g.items()}, f)
 
-def exportReplicas(theorem_name, depth, num_replicas, num_iterations, mod_libs=False):
+def exportReplicas(theorem_name, depth, num_replicas, num_iterations):
     outfolder = './ProofDAGs/'+theorem_name+'/'
     theorem_dag = importOrigDAG(theorem_name, depth)
     gen_dags = genComparableGraphs(theorem_dag, num_replicas, num_iterations)
     for i,g in enumerate(gen_dags):
-        gen_file = outfolder+'gen_d'+str(depth)+('_mod_' if mod_libs else '_')+str(i)+'.txt'
+        gen_file = outfolder+'gen_d'+str(depth)+'_'+str(i)+'.txt'
         with open(gen_file, 'w') as f:
             json.dump({k:list(v) for k,v in g.items()}, f)
 
-def exportDAGs(theorem_name, max_depth, num_replicas, num_iterations, mod_libs=False):
+def exportDAGs(theorem_name, max_depth, num_replicas, num_iterations):
     print('theorem_name:', theorem_name)
     last_size = 0
     for depth in range(1, max_depth+1):
         if last_size < 10000:
-            tree = utils.theoremNameToLists(theorem_name, depth, mod_libs=mod_libs)
+            tree = utils.theoremNameToLists(theorem_name, depth)
             dag = toplistToDAG(tree, depth=depth)
             last_size = len(list(dag.keys()))
             print("depth ",depth, ":", "size ", last_size)
-            exportOrigAndReplicas(dag, theorem_name, num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
+            exportOrigAndReplicas(dag, theorem_name, num_replicas, num_iterations, depth=depth)
 
-def exportLibDAG(library_name, max_depth, num_replicas, num_iterations, limit=None, mod_libs=False):
+def exportLibDAG(library_name, max_depth, num_replicas, num_iterations, limit=None):
     for depth in range(1, max_depth+1):
-        dag = libNameToDAG(library_name, depth=depth, mod_libs=mod_libs, limit=limit)
-        exportOrigAndReplicas(dag, library_name, num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
+        dag = libNameToDAG(library_name, depth=depth, limit=limit)
+        exportOrigAndReplicas(dag, library_name, num_replicas, num_iterations, depth=depth)
 
-def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
+def getGeoCoqTheorems(depth=2, limit=None):
     if not os.path.exists('./ProofTrees/euclid_book_d'+str(depth)+'.txt'):
         subprocess.call(['./make_euclid_theorems.sh', str(depth)])
     with open('./ProofTrees/euclid_book_d'+str(depth)+'.txt','r') as f:
@@ -599,20 +578,20 @@ def getGeoCoqTheorems(depth=2, mod_libs=False, limit=None):
     if limit:
         theorem_names = theorem_names[:limit]
     theorems = {}
-    return {theorem_name: utils.theoremNameToLists(theorem_name, depth=depth, mod_libs=mod_libs)
+    return {theorem_name: utils.theoremNameToLists(theorem_name, depth=depth)
          for theorem_name in theorem_names}
 
-def getGeoCoqDAG(depth=2, mod_libs=False, limit=None):
-    theorem_dict = getGeoCoqTheorems(depth=depth, mod_libs=mod_libs, limit=limit)
+def getGeoCoqDAG(depth=2, limit=None):
+    theorem_dict = getGeoCoqTheorems(depth=depth, limit=limit)
     theorem_tree = ['Top'] + list(map(lambda x:x[1], theorem_dict.values()))
     library_dag = toplistToDAG(theorem_tree)
     return library_dag
 
-def exportGeoCoqDAG(max_depth, num_replicas, num_iterations, limit=None, mod_libs=False, plot=False):
+def exportGeoCoqDAG(max_depth, num_replicas, num_iterations, limit=None, plot=False):
     for depth in range(1, max_depth+1):
         print("depth: ", depth)
-        dag = getGeoCoqDAG(depth=depth, mod_libs=mod_libs, limit=limit)
-        exportOrigAndReplicas(dag, 'euclid_book', num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
+        dag = getGeoCoqDAG(depth=depth, limit=limit)
+        exportOrigAndReplicas(dag, 'euclid_book', num_replicas, num_iterations, depth=depth)
 
 def geoTreesToDAGs(depth):
     euclid_theorems = list(filter(lambda x: x[:7] == 'euclid.', os.listdir('./ProofTrees')))
@@ -757,16 +736,16 @@ def importDAG(filename):
 def removeGenVars(dag):
     return {k:{x for x in v if 'gen_var' not in x} for k,v in dag.items() if 'gen_var' not in k}
 
-def importOrigDAG(theorem_name, depth, mod_libs=False):
-    filename = './ProofDAGs/'+theorem_name+'/d'+str(depth)+('_mod.txt' if mod_libs else '.txt')
+def importOrigDAG(theorem_name, depth):
+    filename = './ProofDAGs/'+theorem_name+'/d'+str(depth)+'.txt.'
     return importDAG(filename)
 
 def stringifyValues(d):
     return {k:list(map(str, v)) for k,v in d.items()}
 
-def importRandDAGs(theorem_name, depth, mod_libs=False):
+def importRandDAGs(theorem_name, depth):
     folder_name = './ProofDAGs/'+theorem_name
-    search_string = 'gen_d'+str(depth)+('_mod_' if mod_libs else '_')
+    search_string = 'gen_d'+str(depth)+'_'
     filenames = map(lambda y: folder_name +'/'+y,
                     filter(lambda x: search_string in x,
                            os.listdir(folder_name)))
@@ -825,14 +804,14 @@ def plotOnTopLogLog(vals, outfile, figsize=(6,4)):
 def sparseToDense(d):
     return [d[x] if x in d else 0 for x in range(max(d)+1)]
 
-def getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=False):
-    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+in_or_out+'degree_dist.png'
+def getDegreeOrigFileName(theorem_name, depth, in_or_out):
+    return './Images/'+theorem_name+'_d'+str(depth)+'_'+in_or_out+'degree_dist.png'
 
-def plotOrigDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
-    dag = importOrigDAG(theorem_name, depth, mod_libs=mod_libs)
+def plotOrigDegreeDist(theorem_name, depth, in_or_out):
+    dag = importOrigDAG(theorem_name, depth)
     sparse_degree_dist = getDegreeDist(dag, in_or_out)
     degree_dist = sparseToDense(sparse_degree_dist)
-    plotLineGraphLogLog(degree_dist, getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
+    plotLineGraphLogLog(degree_dist, getDegreeOrigFileName(theorem_name, depth, in_or_out))
 
 def sumDicts(d1, d2):
     all_keys = set(d1.keys()).union(set(d2.keys()))
@@ -852,15 +831,15 @@ def averageDicts(dicts):
     sum_dicts = functools.reduce(sumDicts, dicts, {})
     return {k:v/len(dicts) for k,v in sum_dicts.items()}
 
-def getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=False):
-    return './Images/gen_'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+in_or_out+'degree_dist.png'
+def getDegreeRandFileName(theorem_name, depth, in_or_out):
+    return './Images/gen_'+theorem_name+'_d'+str(depth)+'_'+in_or_out+'degree_dist.png'
 
-def plotRandDegreeDist(theorem_name, depth, in_or_out, mod_libs=False):
+def plotRandDegreeDist(theorem_name, depth, in_or_out):
     dags = importRandDAGs(theorem_name, depth)
     degree_dists = list(map(lambda x: getDegreeDist(x, in_or_out), dags))
     sparse_degree_dist_ave = averageDicts(degree_dists)
     plotLineGraphLogLog(sparseToDense(sparse_degree_dist_ave),
-                        getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs))
+                        getDegreeRandFileName(theorem_name, depth, in_or_out))
 
 def estimateBeta(values):
     exp_val_log = sum(map(lambda r: r*math.log(r), values))
@@ -874,18 +853,18 @@ def getEntropy(values):
 **** Examples
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, in_or_out, mod_libs = 'sqrt2_not_rational', 3, 'in', False
-plotOrigDegreeDist(theorem_name, depth, in_or_out, mod_libs=mod_libs)
-getDegreeOrigFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
+theorem_name, depth, in_or_out = 'sqrt2_not_rational', 3, 'in'
+plotOrigDegreeDist(theorem_name, depth, in_or_out)
+getDegreeOrigFileName(theorem_name, depth, in_or_out)
 #+END_SRC
 
 #+RESULTS:
 [[file:./Images/sqrt2_not_rational_d3_indegree_dist.png]]
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, in_or_out, mod_libs = 'sqrt2_not_rational', 3, 'in', False
-plotRandDegreeDist(theorem_name, depth, in_or_out, mod_libs=mod_libs)
-getDegreeRandFileName(theorem_name, depth, in_or_out, mod_libs=mod_libs)
+theorem_name, depth, in_or_out = 'sqrt2_not_rational', 3, 'in'
+plotRandDegreeDist(theorem_name, depth, in_or_out)
+getDegreeRandFileName(theorem_name, depth, in_or_out)
 #+END_SRC
 
 #+RESULTS:
@@ -904,23 +883,23 @@ def getAveragePageRank(dags):
 def getSortedRankings(rankings):
     return sorted(rankings.values(), key=lambda x: -x)
 
-def pageRankOrigFileName(theorem_name, depth, mod_libs=False):
-    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'page_rank.png'
+def pageRankOrigFileName(theorem_name, depth):
+    return './Images/'+theorem_name+'_d'+str(depth)+'_'+'page_rank.png'
 
-def pageRankRandFileName(theorem_name, depth, mod_libs=False):
-    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'gen_page_rank.png'
+def pageRankRandFileName(theorem_name, depth):
+    return './Images/'+theorem_name+'_d'+str(depth)+'_'+'gen_page_rank.png'
 
-def plotOrigPageRank(theorem_name, depth, mod_libs=False):
-    dag = importOrigDAG(theorem_name, depth, mod_libs=mod_libs)
+def plotOrigPageRank(theorem_name, depth):
+    dag = importOrigDAG(theorem_name, depth)
     rank = getSortedRankings(getPageRank(dag))
     #print("Beta: ", estimateBeta(rank))
-    plotLineGraphLogLog(rank, pageRankOrigFileName(theorem_name, depth, mod_libs=mod_libs))
+    plotLineGraphLogLog(rank, pageRankOrigFileName(theorem_name, depth))
 
-def plotRandPageRank(theorem_name, depth, mod_libs=False):
-    dags = importRandDAGs(theorem_name, depth, mod_libs=mod_libs)
+def plotRandPageRank(theorem_name, depth):
+    dags = importRandDAGs(theorem_name, depth)
     rank = getSortedRankings(getAveragePageRank(dags))
     #print("Beta: ", estimateBeta(rank))
-    plotLineGraphLogLog(rank, pageRankRandFileName(theorem_name, depth, mod_libs=mod_libs))
+    plotLineGraphLogLog(rank, pageRankRandFileName(theorem_name, depth))
 
 def average(lst):
     return sum(lst)/len(lst)
@@ -961,13 +940,13 @@ def getModularity(dag):
     modularity = cylouvain.modularity(partition, graph)
     return modularity
 
-def getModularitiesFileName(theorem_name, depth, mod_libs=False):
-    return './Images/'+theorem_name+'_d'+str(depth)+('_mod_' if mod_libs else '_')+'modularities.png'
+def getModularitiesFileName(theorem_name, depth):
+    return './Images/'+theorem_name+'_d'+str(depth)+'_'+'modularities.png'
 
-def plotOrigVRandModularity(theorem_name, depth, outfile, mod_libs=False):
-    orig_modularity = getModularity(importOrigDAG(theorem_name, depth, mod_libs=mod_libs))
+def plotOrigVRandModularity(theorem_name, depth, outfile):
+    orig_modularity = getModularity(importOrigDAG(theorem_name, depth))
     #print("orig modularity: ", orig_modularity)
-    rand_modularities = list(map(getModularity, importRandDAGs(theorem_name, depth, mod_libs=mod_libs)))
+    rand_modularities = list(map(getModularity, importRandDAGs(theorem_name, depth)))
     plotLineGraph([orig_modularity]+rand_modularities, outfile)
 
 #+END_SRC
@@ -975,9 +954,9 @@ def plotOrigVRandModularity(theorem_name, depth, outfile, mod_libs=False):
 ***** sqrt2_not_rational
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
-outfile = getModularitiesFileName(theorem_name, depth, mod_libs=mod_libs)
-plotOrigVRandModularity(theorem_name, depth, outfile, mod_libs=mod_libs)
+theorem_name, depth = 'sqrt2_not_rational', 2
+outfile = getModularitiesFileName(theorem_name, depth)
+plotOrigVRandModularity(theorem_name, depth, outfile)
 outfile
 #+END_SRC
 
@@ -987,8 +966,8 @@ outfile
 ***** Elements
 
 #+BEGIN_SRC python :session :results file
-theorem_name, depth, mod_libs = 'sqrt2_not_rational', 2, False
-outfile = getModularitiesFileName(theorem_name, depth, mod_libs=mod_libs)
+theorem_name, depth = 'sqrt2_not_rational', 2
+outfile = getModularitiesFileName(theorem_name, depth)
 
 tree = json.loads(open('/home/scottviteri/Downloads/elements.txt','r').read())
 dag = {x[0]:set(x[1]) for x in tree}
@@ -1007,6 +986,15 @@ outfile
 *** Entropy
 
 #+BEGIN_SRC python :session :results output silent
+
+def flipDAG(d):
+    vals = set().union(*d.values())
+    e = {val:set() for val in vals}
+    for val in e:
+        for k in d:
+            if val in d[k]:
+                e[val].add(k)
+    return e
 
 def normalize(lst):
     return [x/sum(lst) for x in lst]
