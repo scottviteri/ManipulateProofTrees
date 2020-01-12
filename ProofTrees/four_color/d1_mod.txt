@@ -1,1 +1,0 @@
-(Definition fourcolor.fourcolor.four_color (Lambda Rmodel_2 model (LetIn R_23 (App fourcolor.real.Real.model_structure Rmodel_2) structure (Lambda m_232 (App fourcolor.realplane.map R_23) (App fourcolor.finitize.compactness_extension Rmodel_2 (App S (App S (App S (App S O)))) (App fourcolor.fourcolor.four_color_finite Rmodel_2) m_232))))) 

@@ -174,6 +174,27 @@ def plotGraph(graph, outfile, label=False, figsize=(4,4)):
     plt.xlim(l-.2,r+.2)
     plt.savefig(outfile)
 
+#import colorsys
+#
+#def whichConstructor(node):
+#    for const in cic_constructors:
+#        if const in node:
+#            return const
+#    return ''
+#
+#def plotGraph(graph, outfile, figsize):
+#    assert(graph.order() != 0)
+#    plt.figure(figsize=figsize)
+#    nx.spring_layout(graph, k=1000/math.sqrt(graph.order()))
+#    labels = {k:('' if '22' in k else (whichConstructor(k) if isConstructor(k) else k)) for k in g}
+#    constr_colors = [(i+1)*(1.0/(len(cic_constructors)+1)) for i in range(1,len(cic_constructors)+1)]
+#    nodes = list(graph.nodes())
+#    colors = [colorsys.hsv_to_rgb(constr_colors[(['']+cic_constructors).index(whichConstructor(node))],.7,.7) for node in nodes]
+#    nx.draw(graph, labels=labels, node_color=colors,node_size = 350)
+#    plt.legend()
+#    plt.savefig(outfile)
+
+
 def plotUndirected(graph, outfile, label=False, figsize=(4,4)):
     undir_graph = nx.Graph(graph)
     plt.figure(figsize=figsize)
@@ -587,10 +608,11 @@ def getGeoCoqDAG(depth=2, mod_libs=False, limit=None):
     library_dag = toplistToDAG(theorem_tree)
     return library_dag
 
-def exportGeoCoqDAG(max_depth, num_replicas, limit=None, mod_libs=False, plot=False):
+def exportGeoCoqDAG(max_depth, num_replicas, num_iterations, limit=None, mod_libs=False, plot=False):
     for depth in range(1, max_depth+1):
+        print("depth: ", depth)
         dag = getGeoCoqDAG(depth=depth, mod_libs=mod_libs, limit=limit)
-        exportOrigAndReplicas(dag, 'euclid_book', num_replicas, depth=depth, mod_libs=mod_libs, plot=plot)
+        exportOrigAndReplicas(dag, 'euclid_book', num_replicas, num_iterations, depth=depth, mod_libs=mod_libs)
 
 def geoTreesToDAGs(depth):
     euclid_theorems = list(filter(lambda x: x[:7] == 'euclid.', os.listdir('./ProofTrees')))
@@ -661,25 +683,8 @@ theorem_names = [
 ]
 
 
-#for theorem_name in theorem_names:
-#  exportDAGs(theorem_name, max_depth=4, num_replicas=0, num_iterations=10)
-
-
-#max_depths = [4,3,2,2,2,3,3,2,2,1,None, \
-#              None,1, None,None, 2,1,4,1,None,None,None, None,None]
-
-#max_depths = [2 for x in theorem_names]
-#for (theorem_name, max_depth) in zip(theorem_names[9:], max_depths[9:]):
-#  depth = max_depth if max_depth else 1
-#  exportDAGs(theorem_name, max_depth=depth, num_replicas=5, num_iterations=10000)
-
-#exportDAGs("sqrt2_not_rational", max_depth=2, num_replicas=5, num_iterations=10000)
-
-#library_names = ['Arith']
-#for library_name in library_names:
-#  exportLibDAG(library_name, max_depth=1, num_replicas=5, num_iterations=10000)
-
-#exportGeoCoqDAG(max_depth=1, num_replicas=5, mod_libs=False)
+for theorem_name in theorem_names:
+  exportDAGs(theorem_name, max_depth=1, num_replicas=0, num_iterations=10)
 
 #+END_SRC
 
@@ -1002,11 +1007,6 @@ outfile
 *** Entropy
 
 #+BEGIN_SRC python :session :results output silent
-
-def flipDAG(dag):
-    g = nx.DiGraph(dag)
-    rev_g = nx.DiGraph.reverse(g)
-    return {k:set(v) for k,v in nx.to_dict_of_lists(rev_g).items()}
 
 def normalize(lst):
     return [x/sum(lst) for x in lst]
@@ -1380,14 +1380,14 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/compare_depth_dists.png'
 
-#dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
-#gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
-#permute_dag = genComparableGraph(dag,1000)
-#print(list(map(getModularity, [dag, gen_dag, permute_dag])))
-#
-#dag_depths = sorted(getMaxDepths(dag).values())[::-1]
-#gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
-#permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
+dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
+permute_dag = genComparableGraph(dag,1000)
+print(list(map(getModularity, [dag, gen_dag, permute_dag])))
+
+dag_depths = sorted(getMaxDepths(dag).values())[::-1]
+gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
+permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
 
 plt.figure()
 fig, axs = plt.subplots(3,1,sharex=True,figsize=(6,12))
@@ -1418,10 +1418,10 @@ print(list(map(getModularity, graphs)))
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/sqrt2_compare_gen.png'
 
-#g1 = importDAG('./ProofDAGs/sqrt2_not_rational/d3.txt')
-#g2 = createGraphHighMod(4,.56,1.0/4.0, len(g1))
-#d1 = sparseToDense(getDegreeDist(g1,'in'))
-#d2 = sparseToDense(getDegreeDist(g2,'in'))
+g1 = importDAG('./ProofDAGs/sqrt2_not_rational/d3.txt')
+g2 = createGraphHighMod(4,.56,1.0/4.0, len(g1))
+d1 = sparseToDense(getDegreeDist(g1,'in'))
+d2 = sparseToDense(getDegreeDist(g2,'in'))
 
 plotOnTopLogLog([d1,d2], outfile)
 outfile
@@ -1435,16 +1435,16 @@ outfile
 #+BEGIN_SRC python :session :results file
 outfile = 'Images/compare_hist.png'
 
-#dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
-#gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
-#gen_dag_high_mod = createGraphHighMod(4,.56,1.0/4.0,len(dag))
-#permute_dag = genComparableGraph(dag,500)
-#print(list(map(getModularity, [dag, gen_dag, gen_dag_high_mod, permute_dag])))
-#
-#dag_depths = sorted(getMaxDepths(dag).values())[::-1]
-#gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
-#gen_dag_high_mod_depths = sorted(getMaxDepths(gen_dag_high_mod).values())[::-1]
-#permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
+dag = importDAG('./ProofDAGs/sqrt2_not_rational/d2.txt')
+gen_dag = createGraph(4,.56,1.0/4.0,len(dag))
+gen_dag_high_mod = createGraphHighMod(4,.56,1.0/4.0,len(dag))
+permute_dag = genComparableGraph(dag,500)
+print(list(map(getModularity, [dag, gen_dag, gen_dag_high_mod, permute_dag])))
+
+dag_depths = sorted(getMaxDepths(dag).values())[::-1]
+gen_dag_depths = sorted(getMaxDepths(gen_dag).values())[::-1]
+gen_dag_high_mod_depths = sorted(getMaxDepths(gen_dag_high_mod).values())[::-1]
+permute_dag_depths = sorted(getMaxDepths(permute_dag).values())[::-1]
 
 plt.figure()
 fig, axs = plt.subplots(4,1,sharex=True,figsize=(6,12))

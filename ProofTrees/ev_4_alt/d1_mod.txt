@@ -1,1 +1,0 @@
-(Definition ExportProof.ev_4_alt (App ExportProof.add_even_even (App S (App S O)) (App S (App S O)) ExportProof.ev_2 ExportProof.ev_2)) 

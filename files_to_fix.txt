@@ -1,5 +1,0 @@
-Reciprocity
-
-pythagoras
-
-Euler exp totient

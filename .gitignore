@@ -1,4 +1,6 @@
-DependencyGraphs/*
 __pycache__/*
 *.swo
 *.swp
+ProofDAGs/*
+PRoofTrees/*
+ProofSourceFiles/*.vo
